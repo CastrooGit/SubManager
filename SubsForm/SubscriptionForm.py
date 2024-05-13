@@ -23,7 +23,6 @@ class SubscriptionFormApp:
         tk.Label(master, text="Client Name:").grid(row=0, column=0, sticky="w")
         tk.Label(master, text="Product Name:").grid(row=1, column=0, sticky="w")
         tk.Label(master, text="End Date (YYYY-MM-DD):").grid(row=2, column=0, sticky="w")
-        tk.Label(master, text="Index:").grid(row=3, column=0, sticky="w")
 
         # Entry fields
         self.client_name_entry = tk.Entry(master)
@@ -35,50 +34,48 @@ class SubscriptionFormApp:
         self.end_date_entry = tk.Entry(master)
         self.end_date_entry.grid(row=2, column=1)
 
-        self.index_entry = tk.Entry(master)
-        self.index_entry.grid(row=3, column=1)
-
         # Buttons
         self.add_button = tk.Button(master, text="Add Subscription", command=self.add_subscription)
-        self.add_button.grid(row=4, column=0, columnspan=2, pady=5)
+        self.add_button.grid(row=3, column=0, columnspan=2, pady=5)
 
         self.view_button = tk.Button(master, text="View Subscriptions", command=self.view_subscriptions)
-        self.view_button.grid(row=5, column=0, columnspan=2, pady=5)
+        self.view_button.grid(row=4, column=0, columnspan=2, pady=5)
 
         self.delete_button = tk.Button(master, text="Delete Subscription", command=self.delete_subscription)
-        self.delete_button.grid(row=6, column=0, columnspan=2, pady=5)
+        self.delete_button.grid(row=5, column=0, columnspan=2, pady=5)
 
         self.renew_button = tk.Button(master, text="Renew Subscription", command=self.renew_subscription)
-        self.renew_button.grid(row=7, column=0, columnspan=2, pady=5)
+        self.renew_button.grid(row=6, column=0, columnspan=2, pady=5)
 
-    def is_api_online(self):
+        # Check API status
+        self.check_api_status()
+
+    def check_api_status(self):
         try:
-            api_url = f"http://{self.host}:{self.port}"
+            api_url = f"http://{self.host}:{self.port}/is_api_online"
             response = requests.get(api_url)
-            return response.status_code == 200
-        except requests.ConnectionError:
-            return False
+            if response.status_code != 200:
+                messagebox.showerror("Error", "API is not online.")
+        except requests.RequestException:
+            messagebox.showerror("Error", "Failed to connect to the API.")
 
     def add_subscription(self):
         try:
-            index = int(self.index_entry.get())
             client_name = self.client_name_entry.get()
             product_name = self.product_name_entry.get()
             end_date_str = self.end_date_entry.get()
 
-            if not self.is_api_online():
-                messagebox.showerror("Error", "API is not online.")
-                return
+            # Check API status
+            self.check_api_status()
 
-            # Check if the index already exists
-            api_url = f"http://{self.host}:{self.port}/view_subscriptions"
+            # Auto-increment index
+            api_url = f"http://{self.host}:{self.port}/get_next_index"
             response = requests.get(api_url)
             if response.status_code == 200:
-                subscriptions = response.json()
-                indexes = [sub["index"] for sub in subscriptions]
-                if index in indexes:
-                    messagebox.showerror("Error", f"Subscription with index {index} already exists.")
-                    return
+                index = response.json()["next_index"]
+            else:
+                messagebox.showerror("Error", "Failed to retrieve index from the API.")
+                return
 
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
             if end_date < datetime.today().date():
@@ -99,14 +96,15 @@ class SubscriptionFormApp:
                 messagebox.showinfo("Success", "Subscription added successfully.")
             else:
                 messagebox.showerror("Error", "Failed to add subscription.")
+
+            
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
     def view_subscriptions(self):
         try:
-            if not self.is_api_online():
-                messagebox.showerror("Error", "API is not online.")
-                return
+            # Check API status
+            self.check_api_status()
 
             # Request the subscriptions data from the API
             api_url = f"http://{self.host}:{self.port}/view_subscriptions"
@@ -130,36 +128,37 @@ class SubscriptionFormApp:
                         tk.Label(view_window, text=subscription["product_name"]).grid(row=i, column=2)
                         tk.Label(view_window, text=subscription["end_date"]).grid(row=i, column=3)
                 else:
+                    # If there are no subscriptions, show a message
                     messagebox.showinfo("Info", "No subscriptions available.")
             else:
                 messagebox.showerror("Error", "Failed to retrieve subscriptions.")
-        except requests.ConnectionError:
+        except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
 
     def delete_subscription(self):
         try:
-            if not self.is_api_online():
-                messagebox.showerror("Error", "API is not online.")
-                return
+            # Check API status
+            self.check_api_status()
 
             # Retrieve the index of the subscription to delete
             index = simpledialog.askinteger("Delete Subscription", "Enter the index of the subscription to delete:")
             if index is not None:
                 # Send a request to delete the subscription to the API
                 api_url = f"http://{self.host}:{self.port}/delete_subscription"
-                response = requests.post(api_url, json={"index": index})
+                response = requests.post(api_url, json={"index": index-1})  # Decrement index by 1
                 if response.status_code == 200:
                     messagebox.showinfo("Success", "Subscription deleted successfully.")
                 else:
                     messagebox.showerror("Error", "Failed to delete subscription.")
-        except requests.ConnectionError:
+
+                
+        except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
 
     def renew_subscription(self):
         try:
-            if not self.is_api_online():
-                messagebox.showerror("Error", "API is not online.")
-                return
+            # Check API status
+            self.check_api_status()
 
             # Retrieve the index of the subscription to renew
             index = simpledialog.askinteger("Renew Subscription", "Enter the index of the subscription to renew:")
@@ -184,7 +183,10 @@ class SubscriptionFormApp:
                     messagebox.showinfo("Success", "Subscription renewed successfully.")
                 else:
                     messagebox.showerror("Error", "Failed to renew subscription.")
-        except requests.ConnectionError:
+
+                # Refresh view after renewing subscription
+                self.view_subscriptions()
+        except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
 
 def main():
