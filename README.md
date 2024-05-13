@@ -85,7 +85,7 @@ python SubscriptionChecker.py
 ## Email Notifications
 
 - The Subscription Checker sends email notifications for renewals and expirations.
-- Configure SMTP settings in `config.ini` to enable email notifications.
+- Configure SMTP settings in `config.ini` to enable email notifications and setup server/api.
 
 ## License
 
