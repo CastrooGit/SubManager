@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import json
 import configparser
+import os
 
 app = Flask(__name__)
 
@@ -92,4 +93,7 @@ def get_next_index():
     return jsonify({"next_index": next_index}), 200
 
 if __name__ == '__main__':
+    if not os.path.exists("subscriptions.json"):
+        with open("subscriptions.json", "w") as file:
+            json.dump([], file)
     app.run(host=host, port=port)

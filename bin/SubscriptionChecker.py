@@ -1,12 +1,12 @@
+import os
 import json
 import smtplib
+import threading
+import time
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
-import os
-import threading
 import configparser
-import time
 
 class SubscriptionChecker:
     def __init__(self, smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file):
@@ -41,9 +41,7 @@ class SubscriptionChecker:
     def load_subscriptions(self):
         self.subscriptions = []
         with open(self.subscriptions_file, "r") as file:
-            for line in file:
-                subscription_data = json.loads(line.strip())
-                self.subscriptions.append(subscription_data)
+            self.subscriptions = json.load(file)
 
     def send_email_notifications(self):
         today = datetime.today().date()
@@ -103,7 +101,7 @@ class SubscriptionChecker:
 def main():
     # Read SMTP settings from config.ini
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read(os.path.join(os.path.dirname(__file__), 'config.ini'))
 
     smtp_server = config.get('SMTP', 'smtp_server')
     smtp_port = config.getint('SMTP', 'smtp_port')
