@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-
 import os
 import json
 import smtplib
@@ -10,8 +7,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import configparser
-
-
 
 class SubscriptionChecker:
     def __init__(self, smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file):
@@ -24,7 +19,6 @@ class SubscriptionChecker:
         self.running = False
 
     def start(self):
-        print("RUNNING...CHECKER")
         self.running = True
         threading.Thread(target=self.check_subscriptions).start()
 
@@ -32,6 +26,7 @@ class SubscriptionChecker:
         self.running = False
 
     def check_subscriptions(self):
+        first_run = True
         while self.running:
             # Get the time until the next 10 o'clock
             now = datetime.now()
@@ -39,7 +34,11 @@ class SubscriptionChecker:
             if now >= next_check:
                 next_check += timedelta(days=1)  # Next day if already past 10 o'clock today
             sleep_time = (next_check - now).total_seconds()
-            
+
+            if first_run:
+                print("SubscriptionChecker is running for the first time.")
+                first_run = False
+
             time.sleep(sleep_time)  # Sleep until the next 10 o'clock
             self.load_subscriptions()
             self.send_email_notifications()
@@ -107,14 +106,15 @@ class SubscriptionChecker:
 def main():
     # Read SMTP settings from config.ini
     config = configparser.ConfigParser()
-    config.read(os.path.join(os.path.dirname(__file__), 'config.ini'))
+    config_file = os.path.join(os.path.dirname(__file__), '..', 'config.ini')  # Adjust the relative path
+    config.read(config_file)
 
     smtp_server = config.get('SMTP', 'smtp_server')
     smtp_port = config.getint('SMTP', 'smtp_port')
     sender_email = config.get('SMTP', 'sender_email')
     sender_password = config.get('SMTP', 'sender_password')
     receiver_email = config.get('SMTP', 'receiver_email')
-    subscriptions_file = os.path.join(os.path.dirname(__file__), "subscriptions.json")
+    subscriptions_file = os.path.join(os.path.dirname(__file__), '..', 'subscriptions.json')  # Adjust the relative path
     
     checker = SubscriptionChecker(smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file)
     checker.start()
