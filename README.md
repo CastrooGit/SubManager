@@ -1,4 +1,3 @@
-Sure, here's everything combined into a single copy:
 
 ```markdown
 # Subscription Script
