@@ -37,7 +37,7 @@ pip install -r requirements.txt
 ### Run the GUI Application
 
 ```bash
-python Subscription_GUI.py
+python SubscriptionForm.py
 ```
 
 ### Start the API
@@ -91,5 +91,3 @@ python SubscriptionChecker.py
 
 This project is licensed under the [MIT License](LICENSE).
 ```
-
-You can copy and paste this into your GitHub README.md file. Adjust the placeholders (`yourusername`, etc.) accordingly.
