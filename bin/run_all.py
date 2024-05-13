@@ -21,6 +21,8 @@ def main():
 
     # Execute update_checker.py
     subprocess.run([sys.executable, update_checker_script])
+    
+    print("RUNNING...")
 
 if __name__ == "__main__":
     main()
