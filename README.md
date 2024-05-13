@@ -85,3 +85,4 @@ The subscription checker runs in the background and sends email notifications fo
 License
 
 This project is licensed under the MIT License.
+
