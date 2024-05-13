@@ -11,6 +11,8 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import configparser
 
+
+
 class SubscriptionChecker:
     def __init__(self, smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file):
         self.smtp_server = smtp_server
@@ -22,6 +24,7 @@ class SubscriptionChecker:
         self.running = False
 
     def start(self):
+        print("RUNNING...CHECKER")
         self.running = True
         threading.Thread(target=self.check_subscriptions).start()
 

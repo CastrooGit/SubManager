@@ -8,6 +8,8 @@ import os
 
 app = Flask(__name__)
 
+print("RUNNING...API")
+
 # Load configurations from config.ini
 config = configparser.ConfigParser()
 config_file_path = "config.ini"

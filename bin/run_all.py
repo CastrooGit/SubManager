@@ -3,6 +3,8 @@ import subprocess
 import sys
 
 def main():
+    
+    print("RUNNING...")
     # Get the directory where the script is located
     base_path = os.path.dirname(os.path.abspath(__file__))
     
@@ -22,7 +24,7 @@ def main():
     # Execute update_checker.py
     subprocess.run([sys.executable, update_checker_script])
     
-    print("RUNNING...")
+    
 
 if __name__ == "__main__":
     main()
