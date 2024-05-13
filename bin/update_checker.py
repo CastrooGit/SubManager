@@ -1,7 +1,5 @@
 import requests
-import json
 import os
-import subprocess
 
 def fetch_latest_release(repo_owner, repo_name):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
@@ -23,7 +21,7 @@ def download_and_replace_executable(repo_owner, repo_name, download_url):
         os.system("unzip -o latest_release.zip")
 
         # Replace the old executable with the new one
-        os.replace("dist/your_script", "your_script")
+        os.replace("dist/your_script", "your_script")  # Adjust the filename
 
         # Clean up
         os.remove("latest_release.zip")
@@ -48,17 +46,14 @@ def check_for_updates(repo_owner, repo_name, current_version):
 
 def main():
     # GitHub repository information
-    repo_owner = "your_username"
-    repo_name = "your_repository"
+    repo_owner = "AfonsoCastro2006"
+    repo_name = "SubsCheck"
 
     # Current version of the executable
     current_version = "1.0"  # Update with your actual version
 
     # Check for updates
     check_for_updates(repo_owner, repo_name, current_version)
-
-    # Run the application
-    subprocess.run(["./your_script"])  # Change the command if needed
 
 if __name__ == "__main__":
     main()
