@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-
 from flask import Flask, request, jsonify
 import json
 import configparser
@@ -12,7 +11,7 @@ print("RUNNING...API")
 
 # Load configurations from config.ini
 config = configparser.ConfigParser()
-config_file_path = "config.ini"
+config_file_path = os.path.join(os.path.dirname(__file__), "config.ini")  # Get the absolute path to config.ini
 config.read(config_file_path)
 
 # Get host and port from config.ini
@@ -22,14 +21,14 @@ port = config.getint("API", "port")
 # Load subscriptions
 def load_subscriptions():
     try:
-        with open("subscriptions.json", "r") as file:
+        with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "r") as file:  # Get the absolute path to subscriptions.json
             return json.load(file)
     except FileNotFoundError:
         return []
 
 # Save subscriptions
 def save_subscriptions(subscriptions):
-    with open("subscriptions.json", "w") as file:
+    with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "w") as file:  # Get the absolute path to subscriptions.json
         json.dump(subscriptions, file)
 
 # Generate a unique index for new subscriptions
@@ -98,7 +97,7 @@ def get_next_index():
     return jsonify({"next_index": next_index}), 200
 
 if __name__ == '__main__':
-    if not os.path.exists("subscriptions.json"):
-        with open("subscriptions.json", "w") as file:
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), "subscriptions.json")):
+        with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "w") as file:
             json.dump([], file)
-    app.run(host=host, port=port)
+    app.run(host=host, port=port, debug=True, use_reloader=False)  # Run the Flask app
