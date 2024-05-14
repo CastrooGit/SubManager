@@ -3,3 +3,4 @@ venv
 build
 dist
 run_all.spec
+subscriptions.json
