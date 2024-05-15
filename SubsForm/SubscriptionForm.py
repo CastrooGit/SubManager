@@ -153,7 +153,7 @@ class SubscriptionFormApp:
             if index is not None:
                 # Send a request to delete the subscription to the API
                 api_url = f"http://{self.host}:{self.port}/delete_subscription"
-                response = requests.post(api_url, json={"index": index-1})  # Decrement index by 1
+                response = requests.post(api_url, json={"index": index})
                 if response.status_code == 200:
                     messagebox.showinfo("Success", "Subscription deleted successfully.")
                 else:
@@ -161,6 +161,7 @@ class SubscriptionFormApp:
 
         except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
+
 
     def renew_subscription(self):
         try:

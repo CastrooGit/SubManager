@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import configparser
+import sys
 
 class SubscriptionChecker:
     def __init__(self, smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file):
@@ -104,23 +105,43 @@ class SubscriptionChecker:
             print(f"Error sending email: {e}")
 
 def main():
+    # Get the directory where the script is located
+    if getattr(sys, 'frozen', False):
+        # If the script is frozen by PyInstaller
+        script_dir = os.path.dirname(sys.argv[0])
+    else:
+        # If the script is run as a .py file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    config_file = os.path.join(script_dir, 'config.ini')
+
+    if not os.path.exists(config_file):
+        print("Config file 'config.ini' not found in the script directory:", script_dir)
+        return
+    
     # Read SMTP settings from config.ini
     config = configparser.ConfigParser()
-    config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
     config.read(config_file)
 
-    smtp_server = config.get('SMTP', 'smtp_server')
-    smtp_port = config.getint('SMTP', 'smtp_port')
-    sender_email = config.get('SMTP', 'sender_email')
-    sender_password = config.get('SMTP', 'sender_password')
-    receiver_email = config.get('SMTP', 'receiver_email')
-    subscriptions_file = os.path.join(os.path.dirname(__file__), 'subscriptions.json')
+    if 'SMTP' not in config:
+        print("SMTP section not found in config.ini.")
+        return
+
+    smtp_server = config.get('SMTP', 'smtp_server', fallback='your_smtp_server')
+    smtp_port = config.getint('SMTP', 'smtp_port', fallback=587)
+    sender_email = config.get('SMTP', 'sender_email', fallback='your_sender_email')
+    sender_password = config.get('SMTP', 'sender_password', fallback='your_sender_password')
+    receiver_email = config.get('SMTP', 'receiver_email', fallback='your_receiver_email')
+    subscriptions_file = os.path.join(script_dir, 'subscriptions.json')
 
     checker = SubscriptionChecker(smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file)
     checker.start()
 
     # Send a test email
     send_test_email(sender_email, sender_password, smtp_server, smtp_port, receiver_email)
+
+# The rest of the code remains unchanged
+
 
 def send_test_email(sender_email, sender_password, smtp_server, smtp_port, receiver_email):
     subject = "Test Email"

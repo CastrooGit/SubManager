@@ -61,6 +61,7 @@ def view_subscriptions():
     subscriptions = load_subscriptions()
     return jsonify(subscriptions), 200
 
+
 @app.route('/delete_subscription', methods=['POST'])
 def delete_subscription():
     index = request.json.get("index")
@@ -76,6 +77,7 @@ def delete_subscription():
         return jsonify({"message": "Subscription deleted successfully."}), 200
     else:
         return jsonify({"message": "Invalid index."}), 400
+
 
 @app.route('/renew_subscription', methods=['POST'])
 def renew_subscription():
