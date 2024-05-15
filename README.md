@@ -21,7 +21,7 @@ A simple subscription management system with an API and a checker.
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/SubscriptionScript.git
+git clone https://github.com/CastrooGit/SubManager.git
 cd SubscriptionScript
 ```
 
