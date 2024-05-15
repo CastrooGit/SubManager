@@ -4,6 +4,7 @@ from datetime import datetime
 import requests
 import configparser
 import os
+import sys
 
 class SubscriptionFormApp:
     def __init__(self, master):
@@ -11,10 +12,15 @@ class SubscriptionFormApp:
         self.master.title("Subscription Form")
 
         # Get the directory of the script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
+        if getattr(sys, 'frozen', False):
+            # Running in a bundle
+            self.script_dir = os.path.dirname(sys.executable)
+        else:
+            # Running in normal Python environment
+            self.script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Load configurations from config.ini
-        config_file_path = os.path.join(script_dir, "config.ini")
+        config_file_path = os.path.join(self.script_dir, "config.ini")
 
         # Create config file if it doesn't exist
         if not os.path.exists(config_file_path):
@@ -165,7 +171,6 @@ class SubscriptionFormApp:
 
         except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
-
 
     def renew_subscription(self):
         try:
