@@ -28,6 +28,10 @@ class SubscriptionFormApp:
         self.host = self.config.get("Form", "host")
         self.port = self.config.getint("Form", "port")
 
+        # Print API host and port
+        print(f"API Host: {self.host}")
+        print(f"API Port: {self.port}")
+
         # Labels
         tk.Label(master, text="Client Name:").grid(row=0, column=0, sticky="w")
         tk.Label(master, text="Product Name:").grid(row=1, column=0, sticky="w")
