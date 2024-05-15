@@ -10,9 +10,18 @@ class SubscriptionFormApp:
         self.master = master
         self.master.title("Subscription Form")
 
+        # Get the directory of the script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Load configurations from config.ini
+        config_file_path = os.path.join(script_dir, "config.ini")
+
+        # Create config file if it doesn't exist
+        if not os.path.exists(config_file_path):
+            self.create_config_file(config_file_path)
+
         # Load configurations from config.ini
         self.config = configparser.ConfigParser()
-        config_file_path = os.path.join(os.path.dirname(__file__), "config.ini")
         self.config.read(config_file_path)
 
         # Get form endpoint from config.ini
@@ -97,7 +106,6 @@ class SubscriptionFormApp:
             else:
                 messagebox.showerror("Error", "Failed to add subscription.")
 
-            
         except ValueError as e:
             messagebox.showerror("Error", str(e))
 
@@ -151,7 +159,6 @@ class SubscriptionFormApp:
                 else:
                     messagebox.showerror("Error", "Failed to delete subscription.")
 
-                
         except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
 
@@ -188,6 +195,13 @@ class SubscriptionFormApp:
                 self.view_subscriptions()
         except requests.RequestException:
             messagebox.showerror("Error", "Failed to connect to the API.")
+
+    def create_config_file(self, config_file_path):
+        # Create a default config file
+        config = configparser.ConfigParser()
+        config["Form"] = {"host": "0.0.0.0", "port": "5002"}
+        with open(config_file_path, "w") as configfile:
+            config.write(configfile)
 
 def main():
     root = tk.Tk()

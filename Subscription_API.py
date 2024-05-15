@@ -4,31 +4,40 @@ from flask import Flask, request, jsonify
 import json
 import configparser
 import os
+import sys
 
 app = Flask(__name__)
 
 print("RUNNING...API")
 
+# Get the directory of the script
+if getattr(sys, 'frozen', False):  # if the application is frozen (e.g. pyinstaller)
+    script_dir = os.path.dirname(sys.executable)
+else:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Load configurations from config.ini
 config = configparser.ConfigParser()
-config_file_path = os.path.join(os.path.dirname(__file__), "config.ini")  # Get the absolute path to config.ini
-config.read(config_file_path)
+config_file_path = os.path.join(script_dir, "config.ini")
+if os.path.exists(config_file_path):
+    config.read(config_file_path)
+    print("config.ini found")
 
-# Get host and port from config.ini
-host = config.get("API", "host")
-port = config.getint("API", "port")
+# Get API configuration
+api_host = config.get("API", "host", fallback="localhost")
+api_port = config.getint("API", "port", fallback=5000)
 
 # Load subscriptions
 def load_subscriptions():
     try:
-        with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "r") as file:  # Get the absolute path to subscriptions.json
+        with open(os.path.join(script_dir, "subscriptions.json"), "r") as file:
             return json.load(file)
     except FileNotFoundError:
         return []
 
 # Save subscriptions
 def save_subscriptions(subscriptions):
-    with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "w") as file:  # Get the absolute path to subscriptions.json
+    with open(os.path.join(script_dir, "subscriptions.json"), "w") as file:
         json.dump(subscriptions, file)
 
 # Generate a unique index for new subscriptions
@@ -58,17 +67,15 @@ def delete_subscription():
     subscriptions = load_subscriptions()
     index_exists = False
     for subscription in subscriptions:
-        if subscription["index"] == index + 1:
+        if subscription["index"] == index:
             subscriptions.remove(subscription)
             index_exists = True
             break
     if index_exists:
-        # Adjust the index by adding 1 to match user input
         save_subscriptions(subscriptions)
         return jsonify({"message": "Subscription deleted successfully."}), 200
     else:
         return jsonify({"message": "Invalid index."}), 400
-
 
 @app.route('/renew_subscription', methods=['POST'])
 def renew_subscription():
@@ -97,7 +104,8 @@ def get_next_index():
     return jsonify({"next_index": next_index}), 200
 
 if __name__ == '__main__':
-    if not os.path.exists(os.path.join(os.path.dirname(__file__), "subscriptions.json")):
-        with open(os.path.join(os.path.dirname(__file__), "subscriptions.json"), "w") as file:
+    subscriptions_file_path = os.path.join(script_dir, "subscriptions.json")
+    if not os.path.exists(subscriptions_file_path):
+        with open(subscriptions_file_path, "w") as file:
             json.dump([], file)
-    app.run(host=host, port=port, debug=True, use_reloader=False)  # Run the Flask app
+    app.run(host=api_host, port=api_port, debug=True, use_reloader=False)  # Run the Flask app

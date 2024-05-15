@@ -106,7 +106,7 @@ class SubscriptionChecker:
 def main():
     # Read SMTP settings from config.ini
     config = configparser.ConfigParser()
-    config_file = os.path.join(os.path.dirname(__file__), '..', 'config.ini')  # Adjust the relative path
+    config_file = os.path.join(os.path.dirname(__file__), 'config.ini')
     config.read(config_file)
 
     smtp_server = config.get('SMTP', 'smtp_server')
@@ -114,8 +114,8 @@ def main():
     sender_email = config.get('SMTP', 'sender_email')
     sender_password = config.get('SMTP', 'sender_password')
     receiver_email = config.get('SMTP', 'receiver_email')
-    subscriptions_file = os.path.join(os.path.dirname(__file__), '..', 'subscriptions.json')  # Adjust the relative path
-    
+    subscriptions_file = os.path.join(os.path.dirname(__file__), 'subscriptions.json')
+
     checker = SubscriptionChecker(smtp_server, smtp_port, sender_email, sender_password, receiver_email, subscriptions_file)
     checker.start()
 
