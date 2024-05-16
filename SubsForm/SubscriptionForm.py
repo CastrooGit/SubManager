@@ -145,11 +145,24 @@ class SubscriptionFormApp:
             response = requests.get(api_url)
             response.raise_for_status()  # Raise an error for non-OK responses
 
-            # Show subscriptions in a new window
+            # Get the subscriptions from the response
             subscriptions = response.json()
+
             if subscriptions:
+                # Create a Toplevel window for view subscriptions
                 view_window = tk.Toplevel(self.master)
                 view_window.title("View Subscriptions")
+
+                # Get screen width and height
+                screen_width = view_window.winfo_screenwidth()
+                screen_height = view_window.winfo_screenheight()
+
+                # Calculate position for centering the window
+                x = (screen_width - view_window.winfo_reqwidth()) // 2
+                y = (screen_height - view_window.winfo_reqheight()) // 2
+
+                # Set window position
+                view_window.geometry("+{}+{}".format(x, y))
 
                 # Labels for headers
                 ttk.Label(view_window, text="Index").grid(row=0, column=0)
@@ -167,6 +180,7 @@ class SubscriptionFormApp:
                 self.handle_error("Info", "No subscriptions available.")
         except requests.RequestException as e:
             self.handle_error("Error", f"Failed to retrieve subscriptions: {e}")
+
 
     def delete_subscription(self):
         try:
@@ -269,6 +283,18 @@ class SubscriptionFormApp:
 def main():
     root = tk.Tk()
     app = SubscriptionFormApp(root)
+
+    # Get screen width and height
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    # Calculate position for centering the window
+    x = (screen_width - root.winfo_reqwidth()) // 2
+    y = (screen_height - root.winfo_reqheight()) // 2
+
+    # Set window position
+    root.geometry("+{}+{}".format(x, y))
+
     root.mainloop()
 
 if __name__ == "__main__":
