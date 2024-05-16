@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog
 from datetime import datetime
 import requests
 import configparser
@@ -34,47 +34,59 @@ class SubscriptionFormApp:
         self.host = self.config.get("Form", "host")
         self.port = self.config.getint("Form", "port")
 
-        # Labels
-        tk.Label(master, text="Client Name:").grid(row=0, column=0, sticky="w")
-        tk.Label(master, text="End Date (YYYY-MM-DD):").grid(row=2, column=0, sticky="w")
+        # Create a frame for the form
+        self.form_frame = ttk.Frame(master, padding="20")
+        self.form_frame.grid(row=0, column=0, sticky="nsew")
+        self.form_frame.columnconfigure(1, weight=1)  # Make column 1 expandable
 
-        # Entry fields
-        self.client_name_entry = tk.Entry(master)
-        self.client_name_entry.grid(row=0, column=1)
+        # Client Name
+        ttk.Label(self.form_frame, text="Client Name:").grid(row=0, column=0, sticky="w")
+        self.client_name_entry = ttk.Entry(self.form_frame)
+        self.client_name_entry.grid(row=0, column=1, sticky="ew", padx=(0, 10))
+
+        # End Date
+        ttk.Label(self.form_frame, text="End Date (YYYY-MM-DD):").grid(row=1, column=0, sticky="w")
+        self.end_date_entry = ttk.Entry(self.form_frame)
+        self.end_date_entry.grid(row=1, column=1, sticky="ew", padx=(0, 10))
+
+        # Products Label
+        ttk.Label(self.form_frame, text="Products:").grid(row=2, column=0, sticky="w")
 
         # Product Listbox
-        tk.Label(master, text="Products:").grid(row=3, column=0, sticky="w")
-        self.product_listbox = tk.Listbox(master, selectmode=tk.SINGLE)
-        self.product_listbox.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
+        self.product_listbox = tk.Listbox(self.form_frame, selectmode=tk.SINGLE)
+        self.product_listbox.grid(row=3, column=0, columnspan=2, padx=(0, 10), pady=5, sticky="nsew")
         self.product_listbox.bind("<<ListboxSelect>>", self.on_product_select)  # Bind function to listbox
         self.update_product_list()  # Update the product list initially
-        self.selected_product = None  # Variable to store selected product
 
-        # Entry field for new product
-        tk.Label(master, text="New Product:").grid(row=5, column=0, sticky="w")
-        self.new_product_entry = tk.Entry(master)
-        self.new_product_entry.grid(row=5, column=1, padx=1, pady=5, sticky="ew")
+        # New Product Entry
+        ttk.Label(self.form_frame, text="New Product:").grid(row=4, column=0, sticky="w")
+        self.new_product_entry = ttk.Entry(self.form_frame)
+        self.new_product_entry.grid(row=4, column=1, sticky="ew", padx=(0, 10))
 
-        # Button to add new product
-        self.add_product_button = tk.Button(master, text="Add Product", command=self.add_product)
-        self.add_product_button.grid(row=5, column=2, padx=1, pady=1, sticky="ew")
+        # Add Product Button
+        self.add_product_button = ttk.Button(self.form_frame, text="Add Product", command=self.add_product)
+        self.add_product_button.grid(row=4, column=2, sticky="ew", padx=(0, 10))
 
-        # Entry field for end date
-        self.end_date_entry = tk.Entry(master)
-        self.end_date_entry.grid(row=2, column=1)
+        # Buttons Frame
+        self.buttons_frame = ttk.Frame(master)
+        self.buttons_frame.grid(row=1, column=0, pady=(10, 0))
+        self.buttons_frame.columnconfigure((0, 1, 2, 3), weight=1)  # Make all columns expandable
 
-        # Buttons
-        self.add_button = tk.Button(master, text="Add Subscription", command=self.add_subscription)
-        self.add_button.grid(row=6, column=0, columnspan=2, pady=5)
+        # Add Subscription Button
+        self.add_button = ttk.Button(self.buttons_frame, text="Add Subscription", command=self.add_subscription)
+        self.add_button.grid(row=0, column=0, pady=5, padx=(0, 5), sticky="ew")
 
-        self.view_button = tk.Button(master, text="View Subscriptions", command=self.view_subscriptions)
-        self.view_button.grid(row=7, column=0, columnspan=2, pady=5)
+        # View Subscriptions Button
+        self.view_button = ttk.Button(self.buttons_frame, text="View Subscriptions", command=self.view_subscriptions)
+        self.view_button.grid(row=0, column=1, pady=5, padx=(0, 5), sticky="ew")
 
-        self.delete_button = tk.Button(master, text="Delete Subscription", command=self.delete_subscription)
-        self.delete_button.grid(row=8, column=0, columnspan=2, pady=5)
+        # Delete Subscription Button
+        self.delete_button = ttk.Button(self.buttons_frame, text="Delete Subscription", command=self.delete_subscription)
+        self.delete_button.grid(row=0, column=2, pady=5, padx=(0, 5), sticky="ew")
 
-        self.renew_button = tk.Button(master, text="Renew Subscription", command=self.renew_subscription)
-        self.renew_button.grid(row=9, column=0, columnspan=2, pady=5)
+        # Renew Subscription Button
+        self.renew_button = ttk.Button(self.buttons_frame, text="Renew Subscription", command=self.renew_subscription)
+        self.renew_button.grid(row=0, column=3, pady=5, padx=(0, 5), sticky="ew")
 
         # Check API status
         self.check_api_status()
@@ -85,7 +97,7 @@ class SubscriptionFormApp:
             response = requests.get(api_url)
             response.raise_for_status()  # Raise an error for non-OK responses
         except requests.RequestException as e:
-            messagebox.showerror("Error", f"Failed to connect to the API: {e}")
+            self.handle_error("Error", f"Failed to connect to the API: {e}")
 
     def add_subscription(self):
         client_name = self.client_name_entry.get().strip()
@@ -97,7 +109,7 @@ class SubscriptionFormApp:
         print(f"End Date: {end_date_str}")
 
         if not all([client_name, selected_product, end_date_str]):
-            messagebox.showerror("Error", "Please fill in all fields.")
+            self.handle_error("Error", "Please fill in all fields.")
             return
 
         try:
@@ -121,9 +133,7 @@ class SubscriptionFormApp:
             response.raise_for_status()  # Raise an error for non-OK responses
             messagebox.showinfo("Success", "Subscription added successfully.")
         except (ValueError, requests.RequestException) as e:
-            messagebox.showerror("Error", str(e))
-
-
+            self.handle_error("Error", str(e))
 
     def view_subscriptions(self):
         try:
@@ -142,22 +152,21 @@ class SubscriptionFormApp:
                 view_window.title("View Subscriptions")
 
                 # Labels for headers
-                tk.Label(view_window, text="Index").grid(row=0, column=0)
-                tk.Label(view_window, text="Client Name").grid(row=0, column=1)
-                tk.Label(view_window, text="Product Name").grid(row=0, column=2)
-                tk.Label(view_window, text="End Date").grid(row=0, column=3)
+                ttk.Label(view_window, text="Index").grid(row=0, column=0)
+                ttk.Label(view_window, text="Client Name").grid(row=0, column=1)
+                ttk.Label(view_window, text="Product Name").grid(row=0, column=2)
+                ttk.Label(view_window, text="End Date").grid(row=0, column=3)
 
                 # Display subscription data
                 for i, subscription in enumerate(subscriptions, start=1):
-                    tk.Label(view_window, text=subscription["index"]).grid(row=i, column=0)
-                    tk.Label(view_window, text=subscription.get("client_name", "")).grid(row=i, column=1)
-                    tk.Label(view_window, text=subscription.get("product_name", "")).grid(row=i, column=2)
-                    tk.Label(view_window, text=subscription.get("end_date", "")).grid(row=i, column=3)
+                    ttk.Label(view_window, text=subscription["index"]).grid(row=i, column=0)
+                    ttk.Label(view_window, text=subscription.get("client_name", "")).grid(row=i, column=1)
+                    ttk.Label(view_window, text=subscription.get("product_name", "")).grid(row=i, column=2)
+                    ttk.Label(view_window, text=subscription.get("end_date", "")).grid(row=i, column=3)
             else:
-                messagebox.showinfo("Info", "No subscriptions available.")
+                self.handle_error("Info", "No subscriptions available.")
         except requests.RequestException as e:
-            messagebox.showerror("Error", f"Failed to retrieve subscriptions: {e}")
-
+            self.handle_error("Error", f"Failed to retrieve subscriptions: {e}")
 
     def delete_subscription(self):
         try:
@@ -173,7 +182,7 @@ class SubscriptionFormApp:
                 response.raise_for_status()  # Raise an error for non-OK responses
                 messagebox.showinfo("Success", "Subscription deleted successfully.")
         except (ValueError, requests.RequestException) as e:
-            messagebox.showerror("Error", str(e))
+            self.handle_error("Error", str(e))
 
     def renew_subscription(self):
         try:
@@ -187,7 +196,7 @@ class SubscriptionFormApp:
                 new_end_date = simpledialog.askstring("Renew Subscription", "Enter new end date (YYYY-MM-DD):")
 
                 if not new_end_date:
-                    messagebox.showerror("Error", "Please enter a new end date.")
+                    self.handle_error("Error", "Please enter a new end date.")
                     return
 
                 # Validate the new end date
@@ -203,7 +212,7 @@ class SubscriptionFormApp:
                 # Refresh view after renewing subscription
                 self.view_subscriptions()
         except (ValueError, requests.RequestException) as e:
-            messagebox.showerror("Error", str(e))
+            self.handle_error("Error", str(e))
 
     def add_product(self):
         new_product = self.new_product_entry.get().strip()
@@ -219,9 +228,9 @@ class SubscriptionFormApp:
                 messagebox.showinfo("Success", "Product added successfully.")
                 self.update_product_list()  # Update the product list after adding a new product
             except requests.RequestException as e:
-                messagebox.showerror("Error", f"Failed to add product: {e}")
+                self.handle_error("Error", f"Failed to add product: {e}")
         else:
-            messagebox.showerror("Error", "Please enter a product name.")
+            self.handle_error("Error", "Please enter a product name.")
 
     def on_product_select(self, event):
         # Function to update selected_product variable when an item in the listbox is selected
@@ -242,7 +251,10 @@ class SubscriptionFormApp:
             for product in products:
                 self.product_listbox.insert(tk.END, product)
         except requests.RequestException as e:
-            messagebox.showerror("Error", f"Failed to retrieve products: {e}")
+            if isinstance(e, requests.ConnectionError) or isinstance(e, requests.ConnectTimeout):
+                self.handle_error("Error", "Failed to connect to the API. Please make sure the API is running.")
+            else:
+                self.handle_error("Error", f"Failed to retrieve products: {e}")
 
     def create_config_file(self, config_file_path):
         # Create a default config file
@@ -250,6 +262,9 @@ class SubscriptionFormApp:
         config["Form"] = {"host": "0.0.0.0", "port": "5002"}
         with open(config_file_path, "w") as configfile:
             config.write(configfile)
+
+    def handle_error(self, title, message):
+        messagebox.showerror(title, message)
 
 def main():
     root = tk.Tk()
