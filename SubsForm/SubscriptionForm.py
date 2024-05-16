@@ -9,6 +9,7 @@ import sys
 class SubscriptionFormApp:
     def __init__(self, master):
         self.master = master
+        self.search_var = tk.StringVar()
         master.title("Subscription Form")
 
         # Get the directory of the script
@@ -66,6 +67,10 @@ class SubscriptionFormApp:
         # Add Product Button
         self.add_product_button = ttk.Button(self.form_frame, text="Add Product", command=self.add_product)
         self.add_product_button.grid(row=4, column=2, sticky="ew", padx=(0, 10))
+
+        # Delete Product Button
+        self.delete_product_button = ttk.Button(self.form_frame, text="Delete Product", command=self.delete_product)
+        self.delete_product_button.grid(row=4, column=3, sticky="ew", padx=(0, 10))
 
         # Buttons Frame
         self.buttons_frame = ttk.Frame(master)
@@ -164,23 +169,75 @@ class SubscriptionFormApp:
                 # Set window position
                 view_window.geometry("+{}+{}".format(x, y))
 
-                # Labels for headers
-                ttk.Label(view_window, text="Index").grid(row=0, column=0)
-                ttk.Label(view_window, text="Client Name").grid(row=0, column=1)
-                ttk.Label(view_window, text="Product Name").grid(row=0, column=2)
-                ttk.Label(view_window, text="End Date").grid(row=0, column=3)
+                # Frame to hold search and subscriptions
+                search_frame = ttk.Frame(view_window)
+                search_frame.grid(row=0, column=0, columnspan=4, padx=10, pady=5, sticky="ew")
 
-                # Display subscription data
+                # Search Entry
+                search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+                search_entry.grid(row=0, column=0, padx=(0, 5), sticky="ew")
+
+                # Search Button
+                search_button = ttk.Button(search_frame, text="Search", command=self.filter_subscriptions)
+                search_button.grid(row=0, column=1, padx=(5, 0))
+
+                # Frame to hold subscriptions
+                subscriptions_frame = ttk.Frame(view_window)
+                subscriptions_frame.grid(row=1, column=0, columnspan=4)
+
+                # Labels for headers
+                ttk.Label(subscriptions_frame, text="Index").grid(row=0, column=0)
+                ttk.Label(subscriptions_frame, text="Client Name").grid(row=0, column=1)
+                ttk.Label(subscriptions_frame, text="Product Name").grid(row=0, column=2)
+                ttk.Label(subscriptions_frame, text="End Date").grid(row=0, column=3)
+
+                subscription_widgets = []  # To store widgets of subscriptions
+
                 for i, subscription in enumerate(subscriptions, start=1):
-                    ttk.Label(view_window, text=subscription["index"]).grid(row=i, column=0)
-                    ttk.Label(view_window, text=subscription.get("client_name", "")).grid(row=i, column=1)
-                    ttk.Label(view_window, text=subscription.get("product_name", "")).grid(row=i, column=2)
-                    ttk.Label(view_window, text=subscription.get("end_date", "")).grid(row=i, column=3)
+                    # Create widgets for each subscription
+                    index_label = ttk.Label(subscriptions_frame, text=subscription["index"])
+                    client_name_label = ttk.Label(subscriptions_frame, text=subscription.get("client_name", ""))
+                    product_name_label = ttk.Label(subscriptions_frame, text=subscription.get("product_name", ""))
+                    end_date_label = ttk.Label(subscriptions_frame, text=subscription.get("end_date", ""))
+
+                    # Store subscription widgets in a list
+                    subscription_widgets.append((index_label, client_name_label, product_name_label, end_date_label))
+
+                    # Grid the widgets
+                    index_label.grid(row=i, column=0)
+                    client_name_label.grid(row=i, column=1)
+                    product_name_label.grid(row=i, column=2)
+                    end_date_label.grid(row=i, column=3)
+
+                self.subscription_widgets = subscription_widgets  # Save subscription widgets
+
             else:
                 self.handle_error("Info", "No subscriptions available.")
+
         except requests.RequestException as e:
             self.handle_error("Error", f"Failed to retrieve subscriptions: {e}")
 
+    def filter_subscriptions(self):
+        search_query = self.search_var.get().lower()  # Access search_var with self
+        for widget_set in self.subscription_widgets:
+            index_label, client_name_label, product_name_label, end_date_label = widget_set
+            # Get text from labels and check if it matches search query
+            text = (index_label.cget("text") + " " +
+                    client_name_label.cget("text") + " " +
+                    product_name_label.cget("text") + " " +
+                    end_date_label.cget("text")).lower()
+            if search_query in text:
+                # Show the widget if it matches the search query
+                index_label.grid()
+                client_name_label.grid()
+                product_name_label.grid()
+                end_date_label.grid()
+            else:
+                # Hide the widget if it doesn't match the search query
+                index_label.grid_remove()
+                client_name_label.grid_remove()
+                product_name_label.grid_remove()
+                end_date_label.grid_remove()
 
     def delete_subscription(self):
         try:
@@ -235,6 +292,11 @@ class SubscriptionFormApp:
                 # Check API status
                 self.check_api_status()
 
+                # Check if the product already exists
+                if new_product in self.product_listbox.get(0, tk.END):
+                    messagebox.showerror("Error", "Product already exists.")
+                    return
+
                 # Send request to add product
                 api_url = f"http://{self.host}:{self.port}/add_product"
                 response = requests.post(api_url, json={"product_name": new_product})
@@ -245,6 +307,30 @@ class SubscriptionFormApp:
                 self.handle_error("Error", f"Failed to add product: {e}")
         else:
             self.handle_error("Error", "Please enter a product name.")
+
+    def delete_product(self):
+        selected_product_index = self.product_listbox.curselection()
+        if selected_product_index:
+            try:
+                # Check API status
+                self.check_api_status()
+
+                # Get the selected product
+                selected_product = self.product_listbox.get(selected_product_index)
+
+                # Confirm deletion
+                confirmation = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete '{selected_product}'?")
+                if confirmation:
+                    # Send request to delete product
+                    api_url = f"http://{self.host}:{self.port}/delete_product"
+                    response = requests.post(api_url, json={"product_name": selected_product})
+                    response.raise_for_status()  # Raise an error for non-OK responses
+                    messagebox.showinfo("Success", "Product deleted successfully.")
+                    self.update_product_list()  # Update the product list after deleting
+            except requests.RequestException as e:
+                self.handle_error("Error", f"Failed to delete product: {e}")
+        else:
+            self.handle_error("Error", "Please select a product to delete.")
 
     def on_product_select(self, event):
         # Function to update selected_product variable when an item in the listbox is selected
