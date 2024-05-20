@@ -65,9 +65,13 @@ def add_subscription():
         print("Received request data:", data)
         subscriptions = load_subscriptions()
         
-        # Check if the product already exists
+        # Check if the subscription already exists
         if any(subscription["client_name"] == data["client_name"] and subscription["product_name"] == data["product_name"] for subscription in subscriptions):
             return jsonify({"error": "Subscription already exists."}), 400
+
+        # Check if the license key is provided
+        if "license_key" not in data:
+            return jsonify({"error": "License key is required."}), 400
 
         data["index"] = generate_index(subscriptions)
         subscriptions.append(data)

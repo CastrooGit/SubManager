@@ -50,27 +50,32 @@ class SubscriptionFormApp:
         self.end_date_entry = ttk.Entry(self.form_frame)
         self.end_date_entry.grid(row=1, column=1, sticky="ew", padx=(0, 10))
 
+        # License Key
+        ttk.Label(self.form_frame, text="License Key:").grid(row=2, column=0, sticky="w")
+        self.license_key_entry = ttk.Entry(self.form_frame)
+        self.license_key_entry.grid(row=2, column=1, sticky="ew", padx=(0, 10))
+
         # Products Label
-        ttk.Label(self.form_frame, text="Products:").grid(row=2, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="Products:").grid(row=3, column=0, sticky="w")
 
         # Product Listbox
         self.product_listbox = tk.Listbox(self.form_frame, selectmode=tk.SINGLE)
-        self.product_listbox.grid(row=3, column=0, columnspan=2, padx=(0, 10), pady=5, sticky="nsew")
+        self.product_listbox.grid(row=4, column=0, columnspan=2, padx=(0, 10), pady=5, sticky="nsew")
         self.product_listbox.bind("<<ListboxSelect>>", self.on_product_select)  # Bind function to listbox
         self.update_product_list()  # Update the product list initially
 
         # New Product Entry
-        ttk.Label(self.form_frame, text="New Product:").grid(row=4, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="New Product:").grid(row=5, column=0, sticky="w")
         self.new_product_entry = ttk.Entry(self.form_frame)
-        self.new_product_entry.grid(row=4, column=1, sticky="ew", padx=(0, 10))
+        self.new_product_entry.grid(row=5, column=1, sticky="ew", padx=(0, 10))
 
         # Add Product Button
         self.add_product_button = ttk.Button(self.form_frame, text="Add Product", command=self.add_product)
-        self.add_product_button.grid(row=4, column=2, sticky="ew", padx=(0, 10))
+        self.add_product_button.grid(row=5, column=2, sticky="ew", padx=(0, 10))
 
         # Delete Product Button
         self.delete_product_button = ttk.Button(self.form_frame, text="Delete Product", command=self.delete_product)
-        self.delete_product_button.grid(row=4, column=3, sticky="ew", padx=(0, 10))
+        self.delete_product_button.grid(row=5, column=3, sticky="ew", padx=(0, 10))
 
         # Buttons Frame
         self.buttons_frame = ttk.Frame(master)
@@ -108,12 +113,14 @@ class SubscriptionFormApp:
         client_name = self.client_name_entry.get().strip()
         selected_product = self.product_listbox.get(tk.ACTIVE)
         end_date_str = self.end_date_entry.get().strip()
+        license_key = self.license_key_entry.get().strip()
 
         print(f"Client Name: {client_name}")
         print(f"Selected Product: {selected_product}")
         print(f"End Date: {end_date_str}")
+        print(f"License Key: {license_key}")
 
-        if not all([client_name, selected_product, end_date_str]):
+        if not all([client_name, selected_product, end_date_str, license_key]):
             self.handle_error("Error", "Please fill in all fields.")
             return
 
@@ -131,7 +138,8 @@ class SubscriptionFormApp:
             new_subscription = {
                 "client_name": client_name,
                 "product_name": selected_product,
-                "end_date": end_date_str
+                "end_date": end_date_str,
+                "license_key": license_key
             }
             print("Sending request:", new_subscription)
             response = requests.post(api_url, json=new_subscription)
@@ -171,7 +179,7 @@ class SubscriptionFormApp:
 
                 # Frame to hold search and subscriptions
                 search_frame = ttk.Frame(view_window)
-                search_frame.grid(row=0, column=0, columnspan=4, padx=10, pady=5, sticky="ew")
+                search_frame.grid(row=0, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
                 # Search Entry
                 search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
@@ -183,13 +191,14 @@ class SubscriptionFormApp:
 
                 # Frame to hold subscriptions
                 subscriptions_frame = ttk.Frame(view_window)
-                subscriptions_frame.grid(row=1, column=0, columnspan=4)
+                subscriptions_frame.grid(row=1, column=0, columnspan=5)
 
                 # Labels for headers
                 ttk.Label(subscriptions_frame, text="Index").grid(row=0, column=0)
                 ttk.Label(subscriptions_frame, text="Client Name").grid(row=0, column=1)
                 ttk.Label(subscriptions_frame, text="Product Name").grid(row=0, column=2)
                 ttk.Label(subscriptions_frame, text="End Date").grid(row=0, column=3)
+                ttk.Label(subscriptions_frame, text="License Key").grid(row=0, column=4)  # Add license key header
 
                 subscription_widgets = []  # To store widgets of subscriptions
 
@@ -199,15 +208,17 @@ class SubscriptionFormApp:
                     client_name_label = ttk.Label(subscriptions_frame, text=subscription.get("client_name", ""))
                     product_name_label = ttk.Label(subscriptions_frame, text=subscription.get("product_name", ""))
                     end_date_label = ttk.Label(subscriptions_frame, text=subscription.get("end_date", ""))
+                    license_key_label = ttk.Label(subscriptions_frame, text=subscription.get("license_key", ""))  # Display license key
 
                     # Store subscription widgets in a list
-                    subscription_widgets.append((index_label, client_name_label, product_name_label, end_date_label))
+                    subscription_widgets.append((index_label, client_name_label, product_name_label, end_date_label, license_key_label))
 
                     # Grid the widgets
                     index_label.grid(row=i, column=0)
                     client_name_label.grid(row=i, column=1)
                     product_name_label.grid(row=i, column=2)
                     end_date_label.grid(row=i, column=3)
+                    license_key_label.grid(row=i, column=4)  # Grid license key label
 
                 self.subscription_widgets = subscription_widgets  # Save subscription widgets
 
@@ -220,24 +231,27 @@ class SubscriptionFormApp:
     def filter_subscriptions(self):
         search_query = self.search_var.get().lower()  # Access search_var with self
         for widget_set in self.subscription_widgets:
-            index_label, client_name_label, product_name_label, end_date_label = widget_set
+            index_label, client_name_label, product_name_label, end_date_label, license_key_label = widget_set
             # Get text from labels and check if it matches search query
             text = (index_label.cget("text") + " " +
                     client_name_label.cget("text") + " " +
                     product_name_label.cget("text") + " " +
-                    end_date_label.cget("text")).lower()
+                    end_date_label.cget("text") + " " +
+                    license_key_label.cget("text")).lower()
             if search_query in text:
                 # Show the widget if it matches the search query
                 index_label.grid()
                 client_name_label.grid()
                 product_name_label.grid()
                 end_date_label.grid()
+                license_key_label.grid()
             else:
                 # Hide the widget if it doesn't match the search query
                 index_label.grid_remove()
                 client_name_label.grid_remove()
                 product_name_label.grid_remove()
                 end_date_label.grid_remove()
+                license_key_label.grid_remove()
 
     def delete_subscription(self):
         try:
