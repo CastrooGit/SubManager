@@ -14,10 +14,8 @@ class SubscriptionFormApp:
 
         # Get the directory of the script
         if getattr(sys, 'frozen', False):
-            # Running in a bundle
             self.script_dir = os.path.dirname(sys.executable)
         else:
-            # Running in normal Python environment
             self.script_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Load configurations from config.ini
@@ -51,7 +49,7 @@ class SubscriptionFormApp:
         self.end_date_entry.grid(row=1, column=1, sticky="ew", padx=(0, 10))
 
         # License Key
-        ttk.Label(self.form_frame, text="License Key:").grid(row=2, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="License Key (optional):").grid(row=2, column=0, sticky="w")
         self.license_key_entry = ttk.Entry(self.form_frame)
         self.license_key_entry.grid(row=2, column=1, sticky="ew", padx=(0, 10))
 
@@ -63,6 +61,9 @@ class SubscriptionFormApp:
         self.product_listbox.grid(row=4, column=0, columnspan=2, padx=(0, 10), pady=5, sticky="nsew")
         self.product_listbox.bind("<<ListboxSelect>>", self.on_product_select)  # Bind function to listbox
         self.update_product_list()  # Update the product list initially
+
+        # Clear any default selection in the product listbox
+        self.product_listbox.selection_clear(0, tk.END)
 
         # New Product Entry
         ttk.Label(self.form_frame, text="New Product:").grid(row=5, column=0, sticky="w")
@@ -101,6 +102,7 @@ class SubscriptionFormApp:
         # Check API status
         self.check_api_status()
 
+
     def check_api_status(self):
         try:
             api_url = f"http://{self.host}:{self.port}/is_api_online"
@@ -108,32 +110,33 @@ class SubscriptionFormApp:
             response.raise_for_status()  # Raise an error for non-OK responses
         except requests.RequestException as e:
             self.handle_error("Error", f"Failed to connect to the API: {e}")
+            self.disable_buttons()
+
+    def disable_buttons(self):
+        self.add_button.config(state=tk.DISABLED)
+        self.view_button.config(state=tk.DISABLED)
+        self.delete_button.config(state=tk.DISABLED)
+        self.renew_button.config(state=tk.DISABLED)
+        self.add_product_button.config(state=tk.DISABLED)
+        self.delete_product_button.config(state=tk.DISABLED)
 
     def add_subscription(self):
         client_name = self.client_name_entry.get().strip()
         selected_product = self.product_listbox.get(tk.ACTIVE)
         end_date_str = self.end_date_entry.get().strip()
-        license_key = self.license_key_entry.get().strip()
+        license_key = self.license_key_entry.get().strip() or None
 
-        print(f"Client Name: {client_name}")
-        print(f"Selected Product: {selected_product}")
-        print(f"End Date: {end_date_str}")
-        print(f"License Key: {license_key}")
-
-        if not all([client_name, selected_product, end_date_str, license_key]):
-            self.handle_error("Error", "Please fill in all fields.")
+        if not all([client_name, selected_product, end_date_str]):
+            self.handle_error("Error", "Please fill in all fields except License Key.")
             return
 
         try:
-            # Check API status
             self.check_api_status()
 
-            # Validate end date
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
             if end_date < datetime.today().date():
                 raise ValueError("End date cannot be in the past.")
 
-            # Send request to add subscription
             api_url = f"http://{self.host}:{self.port}/add_subscription"
             new_subscription = {
                 "client_name": client_name,
@@ -141,261 +144,210 @@ class SubscriptionFormApp:
                 "end_date": end_date_str,
                 "license_key": license_key
             }
-            print("Sending request:", new_subscription)
             response = requests.post(api_url, json=new_subscription)
-            response.raise_for_status()  # Raise an error for non-OK responses
+            response.raise_for_status()
             messagebox.showinfo("Success", "Subscription added successfully.")
         except (ValueError, requests.RequestException) as e:
             self.handle_error("Error", str(e))
 
     def view_subscriptions(self):
         try:
-            # Check API status
             self.check_api_status()
 
-            # Request the subscriptions data from the API
             api_url = f"http://{self.host}:{self.port}/view_subscriptions"
             response = requests.get(api_url)
-            response.raise_for_status()  # Raise an error for non-OK responses
+            response.raise_for_status()
 
-            # Get the subscriptions from the response
             subscriptions = response.json()
 
             if subscriptions:
-                # Create a Toplevel window for view subscriptions
-                view_window = tk.Toplevel(self.master)
-                view_window.title("View Subscriptions")
+                self.view_window = tk.Toplevel(self.master)
+                self.view_window.title("View Subscriptions")
 
-                # Get screen width and height
-                screen_width = view_window.winfo_screenwidth()
-                screen_height = view_window.winfo_screenheight()
+                screen_width = self.view_window.winfo_screenwidth()
+                screen_height = self.view_window.winfo_screenheight()
+                x = (screen_width - self.view_window.winfo_reqwidth()) // 2
+                y = (screen_height - self.view_window.winfo_reqheight()) // 2
+                self.view_window.geometry("+{}+{}".format(x, y))
 
-                # Calculate position for centering the window
-                x = (screen_width - view_window.winfo_reqwidth()) // 2
-                y = (screen_height - view_window.winfo_reqheight()) // 2
-
-                # Set window position
-                view_window.geometry("+{}+{}".format(x, y))
-
-                # Frame to hold search and subscriptions
-                search_frame = ttk.Frame(view_window)
+                search_frame = ttk.Frame(self.view_window)
                 search_frame.grid(row=0, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
-                # Search Entry
                 search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
                 search_entry.grid(row=0, column=0, padx=(0, 5), sticky="ew")
 
-                # Search Button
                 search_button = ttk.Button(search_frame, text="Search", command=self.filter_subscriptions)
                 search_button.grid(row=0, column=1, padx=(5, 0))
 
-                # Frame to hold subscriptions
-                subscriptions_frame = ttk.Frame(view_window)
-                subscriptions_frame.grid(row=1, column=0, columnspan=5)
+                self.subscriptions_frame = ttk.Frame(self.view_window)
+                self.subscriptions_frame.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
-                # Labels for headers
-                ttk.Label(subscriptions_frame, text="Index").grid(row=0, column=0)
-                ttk.Label(subscriptions_frame, text="Client Name").grid(row=0, column=1)
-                ttk.Label(subscriptions_frame, text="Product Name").grid(row=0, column=2)
-                ttk.Label(subscriptions_frame, text="End Date").grid(row=0, column=3)
-                ttk.Label(subscriptions_frame, text="License Key").grid(row=0, column=4)  # Add license key header
+                # Column headers
+                ttk.Label(self.subscriptions_frame, text="Index", width=10, anchor='w').grid(row=0, column=0, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Client Name", width=20, anchor='w').grid(row=0, column=1, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Product Name", width=20, anchor='w').grid(row=0, column=2, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="End Date", width=15, anchor='w').grid(row=0, column=3, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="License Key", width=30, anchor='w').grid(row=0, column=4, sticky="w")
 
-                subscription_widgets = []  # To store widgets of subscriptions
+                self.subscription_labels = []
 
-                for i, subscription in enumerate(subscriptions, start=1):
-                    # Create widgets for each subscription
-                    index_label = ttk.Label(subscriptions_frame, text=subscription["index"])
-                    client_name_label = ttk.Label(subscriptions_frame, text=subscription.get("client_name", ""))
-                    product_name_label = ttk.Label(subscriptions_frame, text=subscription.get("product_name", ""))
-                    end_date_label = ttk.Label(subscriptions_frame, text=subscription.get("end_date", ""))
-                    license_key_label = ttk.Label(subscriptions_frame, text=subscription.get("license_key", ""))  # Display license key
+                for idx, subscription in enumerate(subscriptions):
+                    client_name = subscription['client_name']
+                    product_name = subscription['product_name']
+                    end_date = subscription['end_date']
+                    license_key = subscription['license_key'] if subscription['license_key'] else "N/A"
 
-                    # Store subscription widgets in a list
-                    subscription_widgets.append((index_label, client_name_label, product_name_label, end_date_label, license_key_label))
+                    self.subscription_labels.append((
+                        ttk.Label(self.subscriptions_frame, text=idx + 1, width=10, anchor='w'),
+                        ttk.Label(self.subscriptions_frame, text=client_name, width=20, anchor='w'),
+                        ttk.Label(self.subscriptions_frame, text=product_name, width=20, anchor='w'),
+                        ttk.Label(self.subscriptions_frame, text=end_date, width=15, anchor='w'),
+                        ttk.Label(self.subscriptions_frame, text=license_key, width=30, anchor='w')
+                    ))
 
-                    # Grid the widgets
-                    index_label.grid(row=i, column=0)
-                    client_name_label.grid(row=i, column=1)
-                    product_name_label.grid(row=i, column=2)
-                    end_date_label.grid(row=i, column=3)
-                    license_key_label.grid(row=i, column=4)  # Grid license key label
+                    self.subscription_labels[-1][0].grid(row=idx + 1, column=0, sticky="w")
+                    self.subscription_labels[-1][1].grid(row=idx + 1, column=1, sticky="w")
+                    self.subscription_labels[-1][2].grid(row=idx + 1, column=2, sticky="w")
+                    self.subscription_labels[-1][3].grid(row=idx + 1, column=3, sticky="w")
+                    self.subscription_labels[-1][4].grid(row=idx + 1, column=4, sticky="w")
 
-                self.subscription_widgets = subscription_widgets  # Save subscription widgets
-
-            else:
-                self.handle_error("Info", "No subscriptions available.")
+                self.subscriptions = subscriptions
 
         except requests.RequestException as e:
-            self.handle_error("Error", f"Failed to retrieve subscriptions: {e}")
+            self.handle_error("Error", str(e))
+
 
     def filter_subscriptions(self):
-        search_query = self.search_var.get().lower()  # Access search_var with self
-        for widget_set in self.subscription_widgets:
-            index_label, client_name_label, product_name_label, end_date_label, license_key_label = widget_set
-            # Get text from labels and check if it matches search query
-            text = (index_label.cget("text") + " " +
-                    client_name_label.cget("text") + " " +
-                    product_name_label.cget("text") + " " +
-                    end_date_label.cget("text") + " " +
-                    license_key_label.cget("text")).lower()
-            if search_query in text:
-                # Show the widget if it matches the search query
-                index_label.grid()
-                client_name_label.grid()
-                product_name_label.grid()
-                end_date_label.grid()
-                license_key_label.grid()
-            else:
-                # Hide the widget if it doesn't match the search query
-                index_label.grid_remove()
-                client_name_label.grid_remove()
-                product_name_label.grid_remove()
-                end_date_label.grid_remove()
-                license_key_label.grid_remove()
+        search_term = self.search_var.get().lower()
+        filtered_subscriptions = [
+            (idx, subscription) for idx, subscription in enumerate(self.subscriptions)
+            if (search_term in str(idx + 1) or
+                search_term in subscription['client_name'].lower() or
+                search_term in subscription['product_name'].lower())
+        ]
+
+        for widgets in self.subscription_labels:
+            for widget in widgets:
+                widget.destroy()
+
+        self.subscription_labels = []
+
+        for display_idx, (original_idx, subscription) in enumerate(filtered_subscriptions):
+            client_name = subscription['client_name']
+            product_name = subscription['product_name']
+            end_date = subscription['end_date']
+            license_key = subscription['license_key'] if subscription['license_key'] else "N/A"
+
+            self.subscription_labels.append((
+                ttk.Label(self.subscriptions_frame, text=display_idx + 1, width=10, anchor='w'),
+                ttk.Label(self.subscriptions_frame, text=client_name, width=20, anchor='w'),
+                ttk.Label(self.subscriptions_frame, text=product_name, width=20, anchor='w'),
+                ttk.Label(self.subscriptions_frame, text=end_date, width=15, anchor='w'),
+                ttk.Label(self.subscriptions_frame, text=license_key, width=30, anchor='w')
+            ))
+
+            self.subscription_labels[-1][0].grid(row=display_idx + 1, column=0, sticky="w")
+            self.subscription_labels[-1][1].grid(row=display_idx + 1, column=1, sticky="w")
+            self.subscription_labels[-1][2].grid(row=display_idx + 1, column=2, sticky="w")
+            self.subscription_labels[-1][3].grid(row=display_idx + 1, column=3, sticky="w")
+            self.subscription_labels[-1][4].grid(row=display_idx + 1, column=4, sticky="w")
+
+        # Save the filtered subscriptions with their original indices
+        self.filtered_subscriptions = filtered_subscriptions
 
     def delete_subscription(self):
         try:
-            # Check API status
             self.check_api_status()
 
-            # Retrieve the index of the subscription to delete
             index = simpledialog.askinteger("Delete Subscription", "Enter the index of the subscription to delete:")
-            if index is not None:
-                # Send a request to delete the subscription
-                api_url = f"http://{self.host}:{self.port}/delete_subscription"
-                response = requests.post(api_url, json={"index": index})
-                response.raise_for_status()  # Raise an error for non-OK responses
-                messagebox.showinfo("Success", "Subscription deleted successfully.")
-        except (ValueError, requests.RequestException) as e:
+            if index is None:
+                return
+
+            api_url = f"http://{self.host}:{self.port}/delete_subscription"
+            response = requests.delete(api_url, json={"index": index - 1})
+            response.raise_for_status()
+
+            messagebox.showinfo("Success", "Subscription deleted successfully.")
+        except requests.RequestException as e:
             self.handle_error("Error", str(e))
 
     def renew_subscription(self):
         try:
-            # Check API status
             self.check_api_status()
 
-            # Retrieve the index of the subscription to renew
             index = simpledialog.askinteger("Renew Subscription", "Enter the index of the subscription to renew:")
-            if index is not None:
-                # Retrieve new end date for the subscription
-                new_end_date = simpledialog.askstring("Renew Subscription", "Enter new end date (YYYY-MM-DD):")
+            if index is None:
+                return
 
-                if not new_end_date:
-                    self.handle_error("Error", "Please enter a new end date.")
-                    return
+            api_url = f"http://{self.host}:{self.port}/renew_subscription"
+            response = requests.put(api_url, json={"index": index - 1})
+            response.raise_for_status()
 
-                # Validate the new end date
-                datetime.strptime(new_end_date, "%Y-%m-%d")
+            messagebox.showinfo("Success", "Subscription renewed successfully.")
+        except requests.RequestException as e:
+            self.handle_error("Error", str(e))
 
-                # Send a request to renew the subscription
-                api_url = f"http://{self.host}:{self.port}/renew_subscription"
-                renewed_subscription = {"index": index, "new_end_date": new_end_date}
-                response = requests.post(api_url, json=renewed_subscription)
-                response.raise_for_status()  # Raise an error for non-OK responses
-                messagebox.showinfo("Success", "Subscription renewed successfully.")
+    def update_product_list(self):
+        try:
+            self.check_api_status()
 
-                # Refresh view after renewing subscription
-                self.view_subscriptions()
-        except (ValueError, requests.RequestException) as e:
+            api_url = f"http://{self.host}:{self.port}/get_products"
+            response = requests.get(api_url)
+            response.raise_for_status()
+
+            products = response.json()
+            self.product_listbox.delete(0, tk.END)
+            for product in products:
+                self.product_listbox.insert(tk.END, product)
+        except requests.RequestException as e:
             self.handle_error("Error", str(e))
 
     def add_product(self):
         new_product = self.new_product_entry.get().strip()
         if new_product:
             try:
-                # Check API status
                 self.check_api_status()
 
-                # Check if the product already exists
-                if new_product in self.product_listbox.get(0, tk.END):
-                    messagebox.showerror("Error", "Product already exists.")
-                    return
-
-                # Send request to add product
                 api_url = f"http://{self.host}:{self.port}/add_product"
                 response = requests.post(api_url, json={"product_name": new_product})
-                response.raise_for_status()  # Raise an error for non-OK responses
+                response.raise_for_status()
+                self.update_product_list()
                 messagebox.showinfo("Success", "Product added successfully.")
-                self.update_product_list()  # Update the product list after adding a new product
             except requests.RequestException as e:
-                self.handle_error("Error", f"Failed to add product: {e}")
-        else:
-            self.handle_error("Error", "Please enter a product name.")
+                self.handle_error("Error", str(e))
 
     def delete_product(self):
-        selected_product_index = self.product_listbox.curselection()
-        if selected_product_index:
+        selected_product = self.product_listbox.get(tk.ACTIVE)
+        if selected_product:
             try:
-                # Check API status
                 self.check_api_status()
 
-                # Get the selected product
-                selected_product = self.product_listbox.get(selected_product_index)
-
-                # Confirm deletion
-                confirmation = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete '{selected_product}'?")
-                if confirmation:
-                    # Send request to delete product
-                    api_url = f"http://{self.host}:{self.port}/delete_product"
-                    response = requests.post(api_url, json={"product_name": selected_product})
-                    response.raise_for_status()  # Raise an error for non-OK responses
-                    messagebox.showinfo("Success", "Product deleted successfully.")
-                    self.update_product_list()  # Update the product list after deleting
+                api_url = f"http://{self.host}:{self.port}/delete_product"
+                response = requests.delete(api_url, json={"product_name": selected_product})
+                response.raise_for_status()
+                self.update_product_list()
+                messagebox.showinfo("Success", "Product deleted successfully.")
             except requests.RequestException as e:
-                self.handle_error("Error", f"Failed to delete product: {e}")
-        else:
-            self.handle_error("Error", "Please select a product to delete.")
+                self.handle_error("Error", str(e))
 
     def on_product_select(self, event):
-        # Function to update selected_product variable when an item in the listbox is selected
-        index = self.product_listbox.curselection()
-        if index:
-            self.selected_product = self.product_listbox.get(index)
-
-    def update_product_list(self):
-        try:
-            # Request the product list from the API
-            api_url = f"http://{self.host}:{self.port}/get_products"
-            response = requests.get(api_url)
-            response.raise_for_status()  # Raise an error for non-OK responses
-
-            # Update the product list in the GUI
-            products = response.json()
-            self.product_listbox.delete(0, tk.END)  # Clear the current list
-            for product in products:
-                self.product_listbox.insert(tk.END, product)
-        except requests.RequestException as e:
-            if isinstance(e, requests.ConnectionError) or isinstance(e, requests.ConnectTimeout):
-                self.handle_error("Error", "Failed to connect to the API. Please make sure the API is running.")
-            else:
-                self.handle_error("Error", f"Failed to retrieve products: {e}")
-
-    def create_config_file(self, config_file_path):
-        # Create a default config file
-        config = configparser.ConfigParser()
-        config["Form"] = {"host": "0.0.0.0", "port": "5002"}
-        with open(config_file_path, "w") as configfile:
-            config.write(configfile)
+        selected_product = self.product_listbox.get(tk.ACTIVE)
+        self.new_product_entry.delete(0, tk.END)
+        self.new_product_entry.insert(0, selected_product)
 
     def handle_error(self, title, message):
         messagebox.showerror(title, message)
 
-def main():
-    root = tk.Tk()
-    app = SubscriptionFormApp(root)
-
-    # Get screen width and height
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-
-    # Calculate position for centering the window
-    x = (screen_width - root.winfo_reqwidth()) // 2
-    y = (screen_height - root.winfo_reqheight()) // 2
-
-    # Set window position
-    root.geometry("+{}+{}".format(x, y))
-
-    root.mainloop()
+    def create_config_file(self, config_file_path):
+        config = configparser.ConfigParser()
+        config['Form'] = {
+            'host': 'localhost',
+            'port': 5000
+        }
+        with open(config_file_path, 'w') as config_file:
+            config.write(config_file)
 
 if __name__ == "__main__":
-    main()
+    root = tk.Tk()
+    app = SubscriptionFormApp(root)
+    root.mainloop()

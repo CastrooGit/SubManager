@@ -89,31 +89,42 @@ def view_subscriptions():
     return jsonify(subscriptions), 200
 
 
-@app.route('/delete_subscription', methods=['POST'])
+@app.route('/delete_subscription', methods=['DELETE'])
 def delete_subscription():
-    index = request.json.get("index")
-    subscriptions = load_subscriptions()
-    index_exists = False
-    for subscription in subscriptions:
-        if subscription["index"] == index:
-            subscriptions.remove(subscription)
-            index_exists = True
-            break
-    if index_exists:
-        save_subscriptions(subscriptions)
-        return jsonify({"message": "Subscription deleted successfully."}), 200
+    if request.method == 'DELETE':
+        index = request.json.get("index")
+        if index is None:
+            return jsonify({"message": "Index is required."}), 400
+
+        subscriptions = load_subscriptions()
+        index_exists = False
+        for subscription in subscriptions:
+            if subscription["index"] == index:
+                subscriptions.remove(subscription)
+                index_exists = True
+                break
+
+        if index_exists:
+            save_subscriptions(subscriptions)
+            return jsonify({"message": "Subscription deleted successfully."}), 200
+        else:
+            return jsonify({"message": "Invalid index."}), 404
     else:
-        return jsonify({"message": "Invalid index."}), 400
+        return jsonify({"message": "Method not allowed."}), 405
 
 
 @app.route('/renew_subscription', methods=['POST'])
 def renew_subscription():
     index = request.json.get("index")
     new_end_date = request.json.get("new_end_date")
+    new_license_key = request.json.get("new_license_key")
     subscriptions = load_subscriptions()
     for subscription in subscriptions:
         if subscription["index"] == index:
-            subscription["end_date"] = new_end_date
+            if new_end_date:
+                subscription["end_date"] = new_end_date
+            if new_license_key:
+                subscription["license_key"] = new_license_key
             save_subscriptions(subscriptions)
             return jsonify({"message": "Subscription renewed successfully."}), 200
     return jsonify({"message": "Invalid index."}), 400
@@ -147,16 +158,22 @@ def add_product():
         return jsonify({"message": "Invalid product name."}), 400
 
 
-@app.route('/delete_product', methods=['POST'])
+@app.route('/delete_product', methods=['DELETE'])
 def delete_product():
-    product_name = request.json.get("product_name")
-    products = load_products()
-    if product_name in products:
-        products.remove(product_name)
-        save_products(products)
-        return jsonify({"message": "Product deleted successfully."}), 200
+    if request.method == 'DELETE':
+        product_name = request.json.get("product_name")
+        if not product_name:
+            return jsonify({"message": "Product name is required."}), 400
+
+        products = load_products()
+        if product_name in products:
+            products.remove(product_name)
+            save_products(products)
+            return jsonify({"message": "Product deleted successfully."}), 200
+        else:
+            return jsonify({"message": "Product does not exist."}), 404
     else:
-        return jsonify({"message": "Product does not exist."}), 400
+        return jsonify({"message": "Method not allowed."}), 405
 
 
 if __name__ == '__main__':
