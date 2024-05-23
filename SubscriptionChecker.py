@@ -66,8 +66,8 @@ class SubscriptionChecker:
         client_name = subscription["client_name"]
         product_name = subscription["product_name"]
         end_date = subscription["end_date"]
-        subject = f"Subscription Expiry Warning: {client_name}"
-        body = f"Dear User,\n\nYour subscription for {product_name} (client: {client_name}) is expiring in 45 days ({end_date}).\nPlease consider renewing it.\n\nRegards,\nYour Subscription Manager"
+        subject = f"Aviso de Expiração da Assinatura: {client_name}"
+        body = f"Prezado usuário,\n\nSua assinatura para {product_name} (cliente: {client_name}) está expirando em 45 dias ({end_date}).\nPor favor, considere renová-la.\n\nAtenciosamente,\nSeu Gerenciador de Assinaturas"
 
         message = MIMEMultipart()
         message['From'] = self.sender_email
@@ -87,8 +87,8 @@ class SubscriptionChecker:
         client_name = subscription["client_name"]
         product_name = subscription["product_name"]
         end_date = subscription["end_date"]
-        subject = f"Subscription Expiry: {client_name}"
-        body = f"Dear User,\n\nYour subscription for {product_name} (client: {client_name}) is expiring today ({end_date}).\n\nRegards,\nYour Subscription Manager"
+        subject = f"Expiração da Assinatura: {client_name}"
+        body = f"Prezado usuário,\n\nSua assinatura para {product_name} (cliente: {client_name}) está expirando hoje ({end_date}).\n\nAtenciosamente,\nSeu Gerenciador de Assinaturas"
 
         message = MIMEMultipart()
         message['From'] = self.sender_email
@@ -145,7 +145,7 @@ def main():
 
 def send_test_email(sender_email, sender_password, smtp_server, smtp_port, receiver_email):
     subject = "Test Email"
-    body = "This is a test email sent on script boot up."
+    body = "Este é um email de teste quando inicia o script."
 
     message = MIMEMultipart()
     message['From'] = sender_email
