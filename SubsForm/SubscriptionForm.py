@@ -5,13 +5,14 @@ import requests
 import configparser
 import os
 import sys
+from openpyxl import load_workbook
 
 
 class SubscriptionFormApp:
     def __init__(self, master):
         self.master = master
         self.search_var = tk.StringVar()
-        master.title("Formulário de subscrições")
+        master.title("Subscription Form")
 
         if getattr(sys, 'frozen', False):
             self.script_dir = os.path.dirname(sys.executable)
@@ -33,54 +34,55 @@ class SubscriptionFormApp:
         self.form_frame.grid(row=0, column=0, sticky="nsew")
         self.form_frame.columnconfigure(1, weight=1)
 
-        ttk.Label(self.form_frame, text="Name do cliente:").grid(row=0, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="Client Name:").grid(row=0, column=0, sticky="w")
         self.client_name_entry = ttk.Entry(self.form_frame)
         self.client_name_entry.grid(row=0, column=1, sticky="ew", padx=(0, 10))
 
-        ttk.Label(self.form_frame, text="Data final (YYYY-MM-DD):").grid(row=1, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="End Date (YYYY-MM-DD):").grid(row=1, column=0, sticky="w")
         self.end_date_entry = ttk.Entry(self.form_frame)
         self.end_date_entry.grid(row=1, column=1, sticky="ew", padx=(0, 10))
 
-        ttk.Label(self.form_frame, text="Licença (opcional):").grid(row=2, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="License Key (optional):").grid(row=2, column=0, sticky="w")
         self.license_key_entry = ttk.Entry(self.form_frame)
         self.license_key_entry.grid(row=2, column=1, sticky="ew", padx=(0, 10))
 
-        ttk.Label(self.form_frame, text="Produtos:").grid(row=3, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="Products:").grid(row=3, column=0, sticky="w")
 
-        self.product_listbox = tk.Listbox(self.form_frame, selectmode=tk.SINGLE, width=50)  # Adjust the width as needed
-        self.product_listbox.grid(row=4, column=0, columnspan=3, padx=(0, 10), pady=5, sticky="nsew")  # Increase columnspan and adjust padx
+        self.product_listbox = tk.Listbox(self.form_frame, selectmode=tk.SINGLE)
+        self.product_listbox.grid(row=4, column=0, columnspan=2, padx=(0, 10), pady=5, sticky="nsew")
         self.product_listbox.bind("<<ListboxSelect>>", self.on_product_select)
         self.update_product_list()
 
-
         self.product_listbox.selection_clear(0, tk.END)
 
-        ttk.Label(self.form_frame, text="Novo produto:").grid(row=5, column=0, sticky="w")
+        ttk.Label(self.form_frame, text="New Product:").grid(row=5, column=0, sticky="w")
         self.new_product_entry = ttk.Entry(self.form_frame)
         self.new_product_entry.grid(row=5, column=1, sticky="ew", padx=(0, 10))
 
-        self.add_product_button = ttk.Button(self.form_frame, text="Adicionar produto", command=self.add_product)
+        self.add_product_button = ttk.Button(self.form_frame, text="Add Product", command=self.add_product)
         self.add_product_button.grid(row=5, column=2, sticky="ew", padx=(0, 10))
 
-        self.delete_product_button = ttk.Button(self.form_frame, text="Apagar produto", command=self.delete_product)
+        self.delete_product_button = ttk.Button(self.form_frame, text="Delete Product", command=self.delete_product)
         self.delete_product_button.grid(row=5, column=3, sticky="ew", padx=(0, 10))
 
         self.buttons_frame = ttk.Frame(master)
         self.buttons_frame.grid(row=1, column=0, pady=(10, 0))
         self.buttons_frame.columnconfigure((0, 1, 2, 3, 4), weight=1)
 
-        self.add_button = ttk.Button(self.buttons_frame, text="Adicionar subscrição", command=self.add_subscription)
+        self.add_button = ttk.Button(self.buttons_frame, text="Add Subscription", command=self.add_subscription)
         self.add_button.grid(row=0, column=0, pady=5, padx=(0, 5), sticky="ew")
 
-        self.view_button = ttk.Button(self.buttons_frame, text="Ver subscrição", command=self.view_subscriptions)
+        self.view_button = ttk.Button(self.buttons_frame, text="View Subscriptions", command=self.view_subscriptions)
         self.view_button.grid(row=0, column=1, pady=5, padx=(0, 5), sticky="ew")
 
-        self.delete_button = ttk.Button(self.buttons_frame, text="Apagar subscrição", command=self.delete_subscription)
+        self.delete_button = ttk.Button(self.buttons_frame, text="Delete Subscription", command=self.delete_subscription)
         self.delete_button.grid(row=0, column=2, pady=5, padx=(0, 5), sticky="ew")
 
-        self.renew_button = ttk.Button(self.buttons_frame, text="Renovar subscrição", command=self.renew_subscription)
+        self.renew_button = ttk.Button(self.buttons_frame, text="Renew Subscription", command=self.renew_subscription)
         self.renew_button.grid(row=0, column=3, pady=5, padx=(0, 5), sticky="ew")
 
+        self.import_button = ttk.Button(self.buttons_frame, text="Import from Excel", command=self.import_from_excel)
+        self.import_button.grid(row=0, column=4, pady=5, padx=(0, 5), sticky="ew")
 
         self.check_api_status()
 
@@ -90,7 +92,7 @@ class SubscriptionFormApp:
             response = requests.get(api_url)
             response.raise_for_status()
         except requests.RequestException as e:
-            self.handle_error("Error", f"Connecção com api não estabelecida: {e}")
+            self.handle_error("Error", f"Failed to connect to the API: {e}")
             self.disable_buttons()
 
     def disable_buttons(self):
@@ -109,7 +111,7 @@ class SubscriptionFormApp:
         license_key = self.license_key_entry.get().strip() or None
 
         if not all([client_name, selected_product, end_date_str]):
-            self.handle_error("Error", "Por favor preenchar todos os campos necessários.")
+            self.handle_error("Error", "Please fill in all fields except License Key.")
             return
 
         try:
@@ -117,7 +119,7 @@ class SubscriptionFormApp:
 
             end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
             if end_date < datetime.today().date():
-                raise ValueError("Data de fim não pode ser no passado.")
+                raise ValueError("End date cannot be in the past.")
 
             api_url = f"http://{self.host}:{self.port}/add_subscription"
             new_subscription = {
@@ -128,7 +130,7 @@ class SubscriptionFormApp:
             }
             response = requests.post(api_url, json=new_subscription)
             response.raise_for_status()
-            messagebox.showinfo("Success", "Subscripção adicionada com sucesso.")
+            messagebox.showinfo("Success", "Subscription added successfully.")
         except (ValueError, requests.RequestException) as e:
             self.handle_error("Error", str(e))
 
@@ -144,7 +146,7 @@ class SubscriptionFormApp:
 
             if subscriptions:
                 self.view_window = tk.Toplevel(self.master)
-                self.view_window.title("Ver subscrições")
+                self.view_window.title("View Subscriptions")
 
                 screen_width = self.view_window.winfo_screenwidth()
                 screen_height = self.view_window.winfo_screenheight()
@@ -165,10 +167,10 @@ class SubscriptionFormApp:
                 self.subscriptions_frame.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
                 ttk.Label(self.subscriptions_frame, text="Index", width=10, anchor='w').grid(row=0, column=0, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do cliente", width=20, anchor='w').grid(row=0, column=1, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do produto", width=20, anchor='w').grid(row=0, column=2, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Fim de Subscrição", width=15, anchor='w').grid(row=0, column=3, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Licença", width=30, anchor='w').grid(row=0, column=4, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Client Name", width=20, anchor='w').grid(row=0, column=1, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Product Name", width=20, anchor='w').grid(row=0, column=2, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="End Date", width=15, anchor='w').grid(row=0, column=3, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="License Key", width=30, anchor='w').grid(row=0, column=4, sticky="w")
 
                 self.subscription_labels = []
 
@@ -240,7 +242,7 @@ class SubscriptionFormApp:
         try:
             self.check_api_status()
 
-            index = simpledialog.askinteger("Apagar a subscrição", "Inserir o index da subscrição que pretende apagar:")
+            index = simpledialog.askinteger("Delete Subscription", "Enter the index of the subscription to delete:")
             if index is None:
                 return
 
@@ -248,7 +250,7 @@ class SubscriptionFormApp:
             response = requests.delete(api_url, json={"index": index - 1})
             response.raise_for_status()
 
-            messagebox.showinfo("Sucesso", "Subscrição apagada com sucesso.")
+            messagebox.showinfo("Success", "Subscription deleted successfully.")
         except requests.RequestException as e:
             self.handle_error("Error", str(e))
 
@@ -256,7 +258,7 @@ class SubscriptionFormApp:
         try:
             self.check_api_status()
 
-            index = simpledialog.askinteger("Renovar Subscrição", "Inserir o index da subscrição que pretende renovar:")
+            index = simpledialog.askinteger("Renew Subscription", "Enter the index of the subscription to renew:")
             if index is None:
                 return
 
@@ -264,7 +266,7 @@ class SubscriptionFormApp:
             response = requests.put(api_url, json={"index": index - 1})
             response.raise_for_status()
 
-            messagebox.showinfo("Sucesso", "Subscrição adicionada com sucesso.")
+            messagebox.showinfo("Success", "Subscription renewed successfully.")
         except requests.RequestException as e:
             self.handle_error("Error", str(e))
 
@@ -307,7 +309,7 @@ class SubscriptionFormApp:
                 response = requests.delete(api_url, json={"product_name": selected_product})
                 response.raise_for_status()
                 self.update_product_list()
-                messagebox.showinfo("Sucesso", "Produto apagado com sucesso.")
+                messagebox.showinfo("Success", "Produto apagado com sucesso.")
             except requests.RequestException as e:
                 self.handle_error("Error", str(e))
 
@@ -329,6 +331,53 @@ class SubscriptionFormApp:
             config.write(config_file)
 
     
+
+    def import_from_excel(self):
+        file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
+        if not file_path:
+            return
+
+        try:
+            workbook = load_workbook(filename=file_path)
+
+            for sheet in workbook:
+                for row in sheet.iter_rows(min_row=2, values_only=True):  # Skip header row
+                    trimmed_row = row[:4]  # Only consider the first 4 columns
+
+                    # Check if the row is entirely empty
+                    if all(cell is None for cell in trimmed_row):
+                        continue
+
+                    if len(trimmed_row) != 4 or any(cell is None for cell in trimmed_row):
+                        raise ValueError(f"Row does not have exactly 4 non-empty columns: {row}")
+
+                    client_name, product_name, license_key, end_date = trimmed_row
+
+                    # Check if the end date is in the future
+                    if isinstance(end_date, datetime) and end_date <= datetime.now():
+                        continue  # Skip this entry if end date is not in the future
+
+                    end_date_str = end_date.strftime('%Y-%m-%d') if isinstance(end_date, datetime) else end_date
+
+                    new_subscription = {
+                        "client_name": client_name,
+                        "product_name": product_name,
+                        "end_date": end_date_str,
+                        "license_key": license_key
+                    }
+
+                    api_url = f"http://{self.host}:{self.port}/add_subscription"
+                    response = requests.post(api_url, json=new_subscription)
+                    response.raise_for_status()
+
+            messagebox.showinfo("Success", "Subscriptions imported successfully.")
+        except ValueError as ve:
+            self.handle_error("Error", f"Failed to import from Excel: {ve}")
+        except Exception as e:
+            self.handle_error("Error", f"Failed to import from Excel: {e}")
+
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
