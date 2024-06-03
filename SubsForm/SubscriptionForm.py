@@ -140,6 +140,7 @@ class SubscriptionFormApp:
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao adicionar assinatura: {e}")
 
+    
     def view_subscriptions(self):
         try:
             self.check_api_status()
@@ -172,11 +173,18 @@ class SubscriptionFormApp:
                 self.subscriptions_frame = ttk.Frame(self.view_window)
                 self.subscriptions_frame.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
-                ttk.Label(self.subscriptions_frame, text="Índice", width=10, anchor='w').grid(row=0, column=0, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do Cliente", width=20, anchor='w').grid(row=0, column=1, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do Produto", width=20, anchor='w').grid(row=0, column=2, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Data de Término", width=15, anchor='w').grid(row=0, column=3, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Chave de Licença", width=20, anchor='w').grid(row=0, column=4, sticky="w")
+                # Configure grid columns to expand proportionally
+                self.subscriptions_frame.grid_columnconfigure(0, weight=1, minsize=50)
+                self.subscriptions_frame.grid_columnconfigure(1, weight=1, minsize=120)
+                self.subscriptions_frame.grid_columnconfigure(2, weight=5, minsize=300)  # Increased minsize for Nome do Produto
+                self.subscriptions_frame.grid_columnconfigure(3, weight=1, minsize=120)
+                self.subscriptions_frame.grid_columnconfigure(4, weight=1, minsize=150)
+
+                ttk.Label(self.subscriptions_frame, text="Índice", anchor='w').grid(row=0, column=0, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Nome do Cliente", anchor='w').grid(row=0, column=1, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Nome do Produto", anchor='w').grid(row=0, column=2, sticky="w")  # Allow column to expand
+                ttk.Label(self.subscriptions_frame, text="Data de Término", anchor='w').grid(row=0, column=3, sticky="w")
+                ttk.Label(self.subscriptions_frame, text="Chave de Licença", anchor='w').grid(row=0, column=4, sticky="w")
 
                 self.render_subscriptions(subscriptions)
             else:
@@ -190,18 +198,19 @@ class SubscriptionFormApp:
         for widget in self.subscriptions_frame.winfo_children():
             widget.destroy()
 
-        ttk.Label(self.subscriptions_frame, text="Índice", width=10, anchor='w').grid(row=0, column=0, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Nome do Cliente", width=20, anchor='w').grid(row=0, column=1, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Nome do Produto", width=20, anchor='w').grid(row=0, column=2, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Data de Término", width=15, anchor='w').grid(row=0, column=3, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Chave de Licença", width=20, anchor='w').grid(row=0, column=4, sticky="w")
+        ttk.Label(self.subscriptions_frame, text="Índice", anchor='w').grid(row=0, column=0, sticky="w")
+        ttk.Label(self.subscriptions_frame, text="Nome do Cliente", anchor='w').grid(row=0, column=1, sticky="w")
+        ttk.Label(self.subscriptions_frame, text="Nome do Produto", anchor='w').grid(row=0, column=2, sticky="w")
+        ttk.Label(self.subscriptions_frame, text="Data de Término", anchor='w').grid(row=0, column=3, sticky="w")
+        ttk.Label(self.subscriptions_frame, text="Chave de Licença", anchor='w').grid(row=0, column=4, sticky="w")
 
         for index, subscription in enumerate(subscriptions, start=1):
-            ttk.Label(self.subscriptions_frame, text=str(index), width=10, anchor='w').grid(row=index, column=0, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["client_name"], width=20, anchor='w').grid(row=index, column=1, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["product_name"], width=20, anchor='w').grid(row=index, column=2, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["end_date"], width=15, anchor='w').grid(row=index, column=3, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription.get("license_key", ""), width=20, anchor='w').grid(row=index, column=4, sticky="w")
+            ttk.Label(self.subscriptions_frame, text=str(index), anchor='w').grid(row=index, column=0, sticky="w")
+            ttk.Label(self.subscriptions_frame, text=subscription["client_name"], anchor='w').grid(row=index, column=1, sticky="w")
+            ttk.Label(self.subscriptions_frame, text=subscription["product_name"], anchor='w').grid(row=index, column=2, sticky="w")
+            ttk.Label(self.subscriptions_frame, text=subscription["end_date"], anchor='w').grid(row=index, column=3, sticky="w")
+            ttk.Label(self.subscriptions_frame, text=subscription.get("license_key", ""), anchor='w').grid(row=index, column=4, sticky="w")
+
 
     def filter_subscriptions(self):
         search_term = self.search_var.get().strip().lower()
