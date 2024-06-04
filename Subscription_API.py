@@ -51,12 +51,10 @@ def save_products(products):
     with open(os.path.join(script_dir, "products.json"), "w") as file:
         json.dump(products, file)
 
-
 # Generate a unique index for new subscriptions
 def generate_index(subscriptions):
     indexes = [subscription.get("index", 0) for subscription in subscriptions]
     return max(indexes) + 1 if indexes else 1
-
 
 @app.route('/add_subscription', methods=['POST'])
 def add_subscription():
@@ -64,10 +62,6 @@ def add_subscription():
         data = request.json
         print("Received request data:", data)
         subscriptions = load_subscriptions()
-        
-        # Check if the subscription already exists
-        if any(subscription["client_name"] == data["client_name"] and subscription["product_name"] == data["product_name"] for subscription in subscriptions):
-            return jsonify({"error": "Subscription already exists."}), 400
 
         # Check if the license key is provided
         if "license_key" not in data:
@@ -82,12 +76,10 @@ def add_subscription():
         print("Error:", e)
         return jsonify({"error": "Internal Server Error"}), 500
 
-
 @app.route('/view_subscriptions', methods=['GET'])
 def view_subscriptions():
     subscriptions = load_subscriptions()
     return jsonify(subscriptions), 200
-
 
 @app.route('/delete_subscription', methods=['DELETE'])
 def delete_subscription():
@@ -112,7 +104,6 @@ def delete_subscription():
     else:
         return jsonify({"message": "Method not allowed."}), 405
 
-
 @app.route('/renew_subscription', methods=['POST'])
 def renew_subscription():
     index = request.json.get("index")
@@ -129,34 +120,30 @@ def renew_subscription():
             return jsonify({"message": "Subscription renewed successfully."}), 200
     return jsonify({"message": "Invalid index."}), 400
 
-
 @app.route('/is_api_online', methods=['GET'])
 def is_api_online():
     return jsonify({"status": "online"}), 200
-
 
 @app.route('/get_products', methods=['GET'])
 def get_products():
     products = load_products()
     return jsonify(products), 200
 
-
 @app.route('/add_product', methods=['POST'])
 def add_product():
     product_name = request.json.get("product_name")
     if product_name:
         products = load_products()
-        
+
         # Check if the product already exists
         if product_name in products:
             return jsonify({"error": "Product already exists."}), 400
-        
+
         products.append(product_name)
         save_products(products)
         return jsonify({"message": "Product added successfully."}), 200
     else:
         return jsonify({"message": "Invalid product name."}), 400
-
 
 @app.route('/delete_product', methods=['DELETE'])
 def delete_product():
@@ -174,7 +161,6 @@ def delete_product():
             return jsonify({"message": "Product does not exist."}), 404
     else:
         return jsonify({"message": "Method not allowed."}), 405
-
 
 if __name__ == '__main__':
     subscriptions_file_path = os.path.join(script_dir, "subscriptions.json")

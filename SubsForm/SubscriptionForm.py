@@ -173,18 +173,20 @@ class SubscriptionFormApp:
                 self.subscriptions_frame = ttk.Frame(self.view_window)
                 self.subscriptions_frame.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
 
-                # Configure grid columns to expand proportionally
-                self.subscriptions_frame.grid_columnconfigure(0, weight=1, minsize=50)
-                self.subscriptions_frame.grid_columnconfigure(1, weight=1, minsize=120)
-                self.subscriptions_frame.grid_columnconfigure(2, weight=5, minsize=300)  # Increased minsize for Nome do Produto
-                self.subscriptions_frame.grid_columnconfigure(3, weight=1, minsize=120)
-                self.subscriptions_frame.grid_columnconfigure(4, weight=1, minsize=150)
+                columns = ("Índice", "Nome do Cliente", "Nome do Produto", "Data de Término", "Chave de Licença")
+                self.tree = ttk.Treeview(self.subscriptions_frame, columns=columns, show="headings")
+                self.tree.heading("Índice", text="Índice")
+                self.tree.heading("Nome do Cliente", text="Nome do Cliente")
+                self.tree.heading("Nome do Produto", text="Nome do Produto")
+                self.tree.heading("Data de Término", text="Data de Término")
+                self.tree.heading("Chave de Licença", text="Chave de Licença")
 
-                ttk.Label(self.subscriptions_frame, text="Índice", anchor='w').grid(row=0, column=0, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do Cliente", anchor='w').grid(row=0, column=1, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Nome do Produto", anchor='w').grid(row=0, column=2, sticky="w")  # Allow column to expand
-                ttk.Label(self.subscriptions_frame, text="Data de Término", anchor='w').grid(row=0, column=3, sticky="w")
-                ttk.Label(self.subscriptions_frame, text="Chave de Licença", anchor='w').grid(row=0, column=4, sticky="w")
+                self.tree.pack(expand=True, fill=tk.BOTH, side=tk.LEFT)
+
+                # Adding scrollbar
+                scrollbar = ttk.Scrollbar(self.subscriptions_frame, orient=tk.VERTICAL, command=self.tree.yview)
+                scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+                self.tree.configure(yscroll=scrollbar.set)
 
                 self.render_subscriptions(subscriptions)
             else:
@@ -194,22 +196,22 @@ class SubscriptionFormApp:
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao procurar assinaturas: {e}")
 
+
     def render_subscriptions(self, subscriptions):
-        for widget in self.subscriptions_frame.winfo_children():
-            widget.destroy()
+        # Clear the current contents of the Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-        ttk.Label(self.subscriptions_frame, text="Índice", anchor='w').grid(row=0, column=0, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Nome do Cliente", anchor='w').grid(row=0, column=1, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Nome do Produto", anchor='w').grid(row=0, column=2, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Data de Término", anchor='w').grid(row=0, column=3, sticky="w")
-        ttk.Label(self.subscriptions_frame, text="Chave de Licença", anchor='w').grid(row=0, column=4, sticky="w")
-
+        # Insert new data into the Treeview
         for index, subscription in enumerate(subscriptions, start=1):
-            ttk.Label(self.subscriptions_frame, text=str(index), anchor='w').grid(row=index, column=0, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["client_name"], anchor='w').grid(row=index, column=1, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["product_name"], anchor='w').grid(row=index, column=2, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription["end_date"], anchor='w').grid(row=index, column=3, sticky="w")
-            ttk.Label(self.subscriptions_frame, text=subscription.get("license_key", ""), anchor='w').grid(row=index, column=4, sticky="w")
+            self.tree.insert("", "end", values=(
+                index,
+                subscription["client_name"],
+                subscription["product_name"],
+                subscription["end_date"],
+                subscription.get("license_key", "")
+            ))
+
 
 
     def filter_subscriptions(self):
@@ -223,11 +225,12 @@ class SubscriptionFormApp:
         filtered_subscriptions = [
             sub for sub in subscriptions
             if search_term in sub["client_name"].lower() or
-               search_term in sub["product_name"].lower() or
-               (sub.get("license_key") and search_term in sub["license_key"].lower())
+            search_term in sub["product_name"].lower() or
+            (sub.get("license_key") and search_term in sub["license_key"].lower())
         ]
 
         self.render_subscriptions(filtered_subscriptions)
+
 
     def delete_subscription(self):
         try:
@@ -280,48 +283,93 @@ class SubscriptionFormApp:
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao renovar assinatura: {e}")
 
+    
+    
     def import_from_excel(self):
-        try:
-            self.check_api_status()
+        def parse_date(date_str):
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y"):
+                try:
+                    parsed_date = datetime.strptime(date_str, fmt)
+                    return parsed_date.strftime("%Y-%m-%d")
+                except ValueError:
+                    continue
+            raise ValueError(f"Invalid end date: {date_str}")
 
+        try:
             file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
             if not file_path:
                 return
 
             wb = load_workbook(filename=file_path)
-            sheet = wb.active
 
-            for row in sheet.iter_rows(min_row=2, values_only=True):
-                client_name, product_name, end_date_str, license_key = row
-                if not client_name or not product_name or not end_date_str:
-                    continue
+            for sheet in wb.sheetnames:
+                ws = wb[sheet]
 
-                try:
-                    end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-                    if end_date < datetime.today().date():
-                        raise ValueError(f"Data de término inválida para {client_name}: {end_date_str}")
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    client_name, product_name, license_key, end_date = row[:4]
+                    if not client_name or not product_name or not end_date:
+                        continue
 
-                    api_url = f"http://{self.host}:{self.port}/add_subscription"
-                    new_subscription = {
-                        "client_name": client_name,
-                        "product_name": product_name,
-                        "end_date": end_date_str,
-                        "license_key": license_key or None
-                    }
-                    response = requests.post(api_url, json=new_subscription)
-                    response.raise_for_status()
-                except ValueError as e:
-                    self.handle_error("Erro", str(e))
-                except requests.ConnectionError:
-                    self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
-                except requests.RequestException as e:
-                    self.handle_error("Erro", f"Falha ao importar assinatura: {e}")
+                    try:
+                        # Add product to the API
+                        api_url_add_product = f"http://{self.host}:{self.port}/add_product"
+                        product_data = {"product_name": product_name}
+                        response_add_product = requests.post(api_url_add_product, json=product_data)
 
-            messagebox.showinfo("Sucesso", "Importação de assinaturas concluída.")
+                        # Ignore if the product already exists
+                        if response_add_product.status_code not in [200, 400]:
+                            error_message = response_add_product.json().get("error", "Unknown error")
+                            self.handle_error("Error", f"Failed to add product '{product_name}': {error_message}")
+                            continue
+
+                        # Parse end date
+                        if isinstance(end_date, datetime):
+                            end_date_str = end_date.strftime("%Y-%m-%d")
+                        else:
+                            end_date_str = end_date
+
+                        try:
+                            end_date_parsed = parse_date(end_date_str)
+                        except ValueError:
+                            self.handle_error("Error", f"Invalid end date format for {client_name}: {end_date_str}")
+                            continue
+
+                        if datetime.strptime(end_date_parsed, "%Y-%m-%d").date() < datetime.today().date():
+                            raise ValueError(f"Invalid end date for {client_name}: {end_date_str}")
+
+                        # Prepare subscription data
+                        new_subscription = {
+                            "client_name": client_name,
+                            "product_name": product_name,
+                            "license_key": license_key or None,
+                            "end_date": end_date_parsed
+                        }
+
+                        # Add subscription to the API
+                        api_url_add_subscription = f"http://{self.host}:{self.port}/add_subscription"
+                        response_add_subscription = requests.post(api_url_add_subscription, json=new_subscription)
+
+                        # Check for subscription addition errors
+                        if response_add_subscription.status_code != 200:
+                            error_message = response_add_subscription.json().get("error", "Unknown error")
+                            self.handle_error("Error", f"Failed to add subscription for '{client_name}': {error_message}")
+                            continue
+
+                    except ValueError as e:
+                        self.handle_error("Error", str(e))
+                    except requests.RequestException as e:
+                        self.handle_error("Error", f"Failed to import subscription: {e}")
+
+            # Refresh the product list
+            self.update_product_list()
+            messagebox.showinfo("Success", "Subscription import completed.")
         except FileNotFoundError:
-            self.handle_error("Erro", "Arquivo não encontrado.")
+            self.handle_error("Error", "File not found.")
         except Exception as e:
-            self.handle_error("Erro", f"Falha ao importar assinaturas: {e}")
+            self.handle_error("Error", f"Failed to import subscriptions: {e}")
+
+
+
 
     def update_product_list(self):
         self.product_listbox.delete(0, tk.END)
