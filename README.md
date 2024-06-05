@@ -36,15 +36,16 @@ pip install -r requirements.txt
 ### Start the API
 
 ```bash
-python Subscription_API.py
+python Subscription_API.py 
 ```
+(which will create subscription.json, products.json, and config.ini(if not already created))
 
 ### Run the GUI Application
 
 ```bash
 python SubscriptionForm.py
 ```
-
+(which will create config.ini(if not already created))
 ### Start the Subscription Checker
 
 ```bash
