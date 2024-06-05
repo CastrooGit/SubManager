@@ -152,6 +152,10 @@ class SubscriptionFormApp:
             subscriptions = response.json()
 
             if subscriptions:
+                # Attach the original index to each subscription
+                for i, sub in enumerate(subscriptions):
+                    sub['original_index'] = i + 1
+
                 self.view_window = tk.Toplevel(self.master)
                 self.view_window.title("Visualizar Assinaturas")
 
@@ -169,6 +173,9 @@ class SubscriptionFormApp:
 
                 search_button = ttk.Button(search_frame, text="Procurar", command=self.filter_subscriptions)
                 search_button.grid(row=0, column=1, padx=(5, 0))
+
+                sort_button = ttk.Button(search_frame, text="Ordenar Alfabeticamente", command=self.sort_subscriptions)
+                sort_button.grid(row=0, column=2, padx=(5, 0))
 
                 self.subscriptions_frame = ttk.Frame(self.view_window)
                 self.subscriptions_frame.grid(row=1, column=0, columnspan=5, padx=10, pady=5, sticky="ew")
@@ -188,6 +195,8 @@ class SubscriptionFormApp:
                 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
                 self.tree.configure(yscroll=scrollbar.set)
 
+                self.subscriptions = subscriptions  # Store subscriptions for filtering and sorting
+                self.filtered_subscriptions = subscriptions  # Initialize filtered_subscriptions
                 self.render_subscriptions(subscriptions)
             else:
                 self.handle_error("Erro", "Nenhuma assinatura encontrada.")
@@ -196,40 +205,34 @@ class SubscriptionFormApp:
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao procurar assinaturas: {e}")
 
-
     def render_subscriptions(self, subscriptions):
         # Clear the current contents of the Treeview
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         # Insert new data into the Treeview
-        for index, subscription in enumerate(subscriptions, start=1):
+        for subscription in subscriptions:
             self.tree.insert("", "end", values=(
-                index,
+                subscription['original_index'],
                 subscription["client_name"],
                 subscription["product_name"],
                 subscription["end_date"],
                 subscription.get("license_key", "")
             ))
 
-
-
     def filter_subscriptions(self):
         search_term = self.search_var.get().strip().lower()
-        api_url = f"http://{self.host}:{self.port}/view_subscriptions"
-        response = requests.get(api_url)
-        response.raise_for_status()
-
-        subscriptions = response.json()
-
-        filtered_subscriptions = [
-            sub for sub in subscriptions
+        self.filtered_subscriptions = [
+            sub for sub in self.subscriptions
             if search_term in sub["client_name"].lower() or
             search_term in sub["product_name"].lower() or
             (sub.get("license_key") and search_term in sub["license_key"].lower())
         ]
+        self.render_subscriptions(self.filtered_subscriptions)
 
-        self.render_subscriptions(filtered_subscriptions)
+    def sort_subscriptions(self):
+        self.filtered_subscriptions = sorted(self.filtered_subscriptions, key=lambda sub: sub["client_name"].lower())
+        self.render_subscriptions(self.filtered_subscriptions)
 
 
     def delete_subscription(self):

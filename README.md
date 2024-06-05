@@ -33,16 +33,16 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Run the GUI Application
-
-```bash
-python SubscriptionForm.py
-```
-
 ### Start the API
 
 ```bash
 python Subscription_API.py
+```
+
+### Run the GUI Application
+
+```bash
+python SubscriptionForm.py
 ```
 
 ### Start the Subscription Checker
