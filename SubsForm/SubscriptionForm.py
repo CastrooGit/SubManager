@@ -415,7 +415,7 @@ class SubscriptionFormApp:
 
             api_url = f"http://{self.host}:{self.port}/delete_product"
             product_data = {"product_name": selected_product}
-            response = requests.post(api_url, json=product_data)
+            response = requests.delete(api_url, json=product_data)
             response.raise_for_status()
 
             messagebox.showinfo("Sucesso", "Produto excluído com sucesso.")
@@ -424,6 +424,7 @@ class SubscriptionFormApp:
             self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao excluir produto: {e}")
+
 
     def on_product_select(self, event):
         selected_product = self.product_listbox.get(tk.ACTIVE)
