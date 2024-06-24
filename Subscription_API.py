@@ -110,6 +110,7 @@ def renew_subscription():
     new_end_date = request.json.get("new_end_date")
     new_license_key = request.json.get("new_license_key")
     subscriptions = load_subscriptions()
+
     for subscription in subscriptions:
         if subscription["index"] == index:
             if new_end_date:
@@ -118,7 +119,9 @@ def renew_subscription():
                 subscription["license_key"] = new_license_key
             save_subscriptions(subscriptions)
             return jsonify({"message": "Subscription renewed successfully."}), 200
+
     return jsonify({"message": "Invalid index."}), 400
+
 
 @app.route('/is_api_online', methods=['GET'])
 def is_api_online():
@@ -144,6 +147,7 @@ def add_product():
         return jsonify({"message": "Product added successfully."}), 200
     else:
         return jsonify({"message": "Invalid product name."}), 400
+
 
 @app.route('/delete_product', methods=['DELETE'])
 def delete_product():

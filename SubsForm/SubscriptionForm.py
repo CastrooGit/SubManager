@@ -6,6 +6,7 @@ import configparser
 import os
 import sys
 from openpyxl import load_workbook
+from dateutil.parser import parse
 
 class SubscriptionFormApp:
     def __init__(self, master):
@@ -121,7 +122,7 @@ class SubscriptionFormApp:
         license_key = self.license_key_entry.get().strip() or None
 
         if not all([client_name, selected_product, end_date_str]):
-            self.handle_error("Erro", "Preencha todos os campos, exceto Chave de Licença.")
+            self.handle_error("Erro", "Preencha todos os campos necessários(licensa opcional).")
             return
 
         try:
@@ -160,10 +161,6 @@ class SubscriptionFormApp:
             subscriptions = response.json()
 
             if subscriptions:
-                # Attach the original index to each subscription
-                for i, sub in enumerate(subscriptions):
-                    sub['original_index'] = i + 1
-
                 self.view_window = tk.Toplevel(self.master)
                 self.view_window.title("Visualizar Assinaturas")
 
@@ -194,7 +191,7 @@ class SubscriptionFormApp:
                 view_frame.columnconfigure(0, weight=1)
                 view_frame.rowconfigure(0, weight=1)
 
-                tree_columns = ("Client Name", "Product Name", "End Date", "License Key", "Original Index")
+                tree_columns = ("Nome do cliente", "Nome do produto", "Data de términio", "License Key", "Index")
                 self.tree = ttk.Treeview(view_frame, columns=tree_columns, show="headings")
 
                 for col in tree_columns:
@@ -208,7 +205,7 @@ class SubscriptionFormApp:
 
                 self.filtered_subscriptions = subscriptions
                 for sub in subscriptions:
-                    values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['original_index'])
+                    values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub["index"])
                     self.tree.insert("", "end", values=values)
 
             else:
@@ -219,6 +216,7 @@ class SubscriptionFormApp:
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao buscar assinaturas: {e}")
 
+
     def filter_subscriptions(self):
         search_term = self.search_var.get().strip().lower()
         self.tree.delete(*self.tree.get_children())
@@ -227,68 +225,74 @@ class SubscriptionFormApp:
             if search_term in sub["client_name"].lower() or search_term in sub["product_name"].lower()
         ]
         for sub in filtered_subscriptions:
-            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['original_index'])
+            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['index'])
             self.tree.insert("", "end", values=values)
 
     def sort_subscriptions(self):
         sorted_subscriptions = sorted(self.filtered_subscriptions, key=lambda x: x["client_name"].lower())
         self.tree.delete(*self.tree.get_children())
         for sub in sorted_subscriptions:
-            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['original_index'])
+            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['index'])
             self.tree.insert("", "end", values=values)
 
     def restore_subscriptions(self):
         self.tree.delete(*self.tree.get_children())
         for sub in self.filtered_subscriptions:
-            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['original_index'])
+            values = (sub["client_name"], sub["product_name"], sub["end_date"], sub["license_key"], sub['index'])
             self.tree.insert("", "end", values=values)
 
     def delete_subscription(self):
-        client_name = self.client_name_entry.get().strip()
-        selected_product = self.product_listbox.get(tk.ACTIVE)
+         try:
+             self.check_api_status()
 
-        if not all([client_name, selected_product]):
-            self.handle_error("Erro", "Preencha o nome do cliente e selecione um produto.")
-            return
+             selected_index = simpledialog.askinteger("Input", "Index da Assinatura:")
+             if selected_index is None:
+                 return
 
-        try:
-            self.check_api_status()
-
-            api_url = f"http://{self.host}:{self.port}/delete_subscription"
-            subscription = {"client_name": client_name, "product_name": selected_product}
-            response = requests.post(api_url, json=subscription)
-            response.raise_for_status()
-            messagebox.showinfo("Sucesso", "Assinatura excluída com sucesso.")
-        except requests.ConnectionError:
-            self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
-        except requests.RequestException as e:
-            self.handle_error("Erro", f"Falha ao excluir assinatura: {e}")
+             api_url = f"http://{self.host}:{self.port}/delete_subscription"
+             payload = {
+                 "index": selected_index
+             }
+             response = requests.delete(api_url, json=payload)
+             response.raise_for_status()
+             messagebox.showinfo("Sucesso", "Assinatura excluída com sucesso.")
+         except requests.ConnectionError:
+             self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
+         except requests.RequestException as e:
+             self.handle_error("Erro", f"Falha ao excluir assinatura: {e}")
 
     def renew_subscription(self):
-        client_name = self.client_name_entry.get().strip()
-        selected_product = self.product_listbox.get(tk.ACTIVE)
-        additional_days = simpledialog.askinteger("Renovar Assinatura", "Número de dias para adicionar:")
-
-        if not all([client_name, selected_product, additional_days]):
-            self.handle_error("Erro", "Preencha o nome do cliente, selecione um produto e forneça os dias adicionais.")
-            return
-
         try:
             self.check_api_status()
 
+            index = simpledialog.askinteger("Renew Subscription", "Enter the index of the subscription to renew:")
+            if index is None:
+                return
+
+            new_end_date_str = simpledialog.askstring("Renew Subscription", "Enter the new end date (YYYY-MM-DD):")
+            if not new_end_date_str:
+                return
+
+            # Validate and parse the new end date
+            try:
+                new_end_date = datetime.strptime(new_end_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                self.handle_error("Error", "Invalid date format. Please use YYYY-MM-DD.")
+                return
+
             api_url = f"http://{self.host}:{self.port}/renew_subscription"
-            subscription = {
-                "client_name": client_name,
-                "product_name": selected_product,
-                "additional_days": additional_days
+            renewal_data = {
+                "index": index,
+                "new_end_date": new_end_date_str
             }
-            response = requests.post(api_url, json=subscription)
+            response = requests.post(api_url, json=renewal_data)
             response.raise_for_status()
-            messagebox.showinfo("Sucesso", "Assinatura renovada com sucesso.")
-        except requests.ConnectionError:
-            self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
+
+            messagebox.showinfo("Success", "Subscription renewed successfully.")
         except requests.RequestException as e:
-            self.handle_error("Erro", f"Falha ao renovar assinatura: {e}")
+            self.handle_error("Error", str(e))
+
+
 
     def import_from_excel(self):
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
@@ -300,25 +304,67 @@ class SubscriptionFormApp:
             self.check_api_status()
 
             workbook = load_workbook(filename=file_path, data_only=True)
-            sheet = workbook.active
 
-            for row in sheet.iter_rows(min_row=2, values_only=True):
-                client_name, product_name, end_date_str, license_key = row
+            new_products = set()  # Use a set to store new products to avoid duplicates
 
-                if not client_name or not product_name or not end_date_str:
-                    continue
+            for sheet in workbook.worksheets:
+                for row in sheet.iter_rows(min_row=2, values_only=True):
+                    # Verificar se a linha tem quatro colunas, e preencher com None se necessário
+                    if len(row) < 4:
+                        row = list(row) + [None] * (4 - len(row))
+                    elif len(row) > 4:
+                        row = row[:4]
 
-                end_date = date.fromisoformat(end_date_str)
+                    client_name, product_name, license_key, end_date_str = row
 
-                api_url = f"http://{self.host}:{self.port}/add_subscription"
-                new_subscription = {
-                    "client_name": client_name,
-                    "product_name": product_name,
-                    "end_date": end_date.isoformat(),
-                    "license_key": license_key
-                }
-                response = requests.post(api_url, json=new_subscription)
-                response.raise_for_status()
+                    if not client_name or not product_name or not end_date_str:
+                        continue
+
+                    try:
+                        # Analisar a data e garantir que apenas a parte da data seja extraída
+                        end_date = parse(str(end_date_str)).date()
+                    except (ValueError, TypeError):
+                        self.handle_error("Erro", f"Data inválida: {end_date_str}")
+                        continue
+
+                    api_url = f"http://{self.host}:{self.port}/add_subscription"
+                    new_subscription = {
+                        "client_name": client_name,
+                        "product_name": product_name,
+                        "end_date": end_date.isoformat(),
+                        "license_key": license_key
+                    }
+                    response = requests.post(api_url, json=new_subscription)
+                    response.raise_for_status()
+
+                    # Add product to the set of new products
+                    new_products.add(product_name)
+
+            # Update the product list with new products
+            if new_products:
+                for product_name in new_products:
+                    try:
+                        self.check_api_status()
+
+                        api_url = f"http://{self.host}:{self.port}/add_product"
+                        product_data = {"product_name": product_name}
+                        response = requests.post(api_url, json=product_data)
+                        
+                        # Check if product already exists
+                        if response.status_code == 400:
+                            error_msg = response.json().get("error")
+                            if error_msg and "already exists" in error_msg.lower():
+                                continue  # Ignore if product already exists
+
+                        response.raise_for_status()
+
+                    except requests.ConnectionError:
+                        self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
+                    except requests.RequestException as e:
+                        self.handle_error("Erro", f"Falha ao adicionar produto '{product_name}': {e}")
+
+                messagebox.showinfo("Sucesso", "Produtos adicionados com sucesso.")
+                self.update_product_list()  # Update the product list in the UI
 
             messagebox.showinfo("Sucesso", "Assinaturas importadas com sucesso do Excel.")
         except ValueError as e:
@@ -327,6 +373,9 @@ class SubscriptionFormApp:
             self.handle_error("Erro", "Falha ao conectar à API: Problema de conexão.")
         except requests.RequestException as e:
             self.handle_error("Erro", f"Falha ao importar assinaturas: {e}")
+
+
+
 
     def handle_error(self, title, message):
         messagebox.showerror(title, message)
